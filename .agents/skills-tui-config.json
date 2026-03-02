@@ -5,11 +5,11 @@
     "global_command": "skills",
     "npx_command": "npx",
     "npx_package": "skills",
+    "default_agents": [
+      "opencode"
+    ],
     "expected_identity_substring": "skills",
     "global_command_verified": true,
     "global_command_version": "1.4.3"
-  },
-  "favorite_skills": [
-    "project:skills/opencode-rs-sdk/SKILL.md"
-  ]
+  }
 }

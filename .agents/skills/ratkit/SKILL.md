@@ -3,7 +3,7 @@ name: ratkit
 description: Comprehensive guide for the ratkit Rust TUI component library built on ratatui 0.29, including feature flags, APIs, and implementation patterns. Use when building, debugging, or extending ratkit applications and examples.
 compatibility: Requires Rust 1.70+, Cargo, just, and a terminal environment for interactive TUI demos.
 metadata:
-  version: "0.2.5"
+  version: "0.2.12"
 ---
 
 # ratkit
@@ -53,7 +53,7 @@ This file provides a complete reference for working with the ratkit codebase. Th
 ### Run with just
 - **Where to edit**: N/A
 - **Related files**: `justfile`
-- **Validation**: `just demo` (interactive picker) or `just demo-md`, `just demo-term`, etc.
+- **Validation**: `just demo` (interactive picker) or `just demo-md`, `just demo-md-small`, `just demo-term`, etc.
 
 ### Build with specific features
 - **Where to edit**: `Cargo.toml` (root level)
@@ -75,7 +75,7 @@ This file provides a complete reference for working with the ratkit codebase. Th
 ```toml
 # Cargo.toml - enable specific features
 [dependencies]
-ratkit = { version = "0.2.5", features = ["button", "dialog", "pane"] }
+ratkit = { version = "0.2.12", features = ["button", "dialog", "pane"] }
 ```
 
 ```rust
@@ -160,6 +160,13 @@ Each primitive has an individual feature flag:
 - StatefulWidget pattern for complex state
 - Event emission via `WidgetEvent`
 - Mouse/keyboard interaction support
+
+### MenuBar Layout Contract (updated)
+
+- `MenuBar::render_with_offset(frame, area, left_offset)` now uses the full available container width for the border: `area.width - left_offset`
+- The menu bar border should stretch to the right edge of the provided container, while menu items remain left-aligned within the bar
+- If available width is zero after offset, rendering exits early and clears `self.area`
+- This behavior was validated with `examples/menu-bar_menu_bar_demo.rs` at fixed 120-column terminal width
 
 ## Complex Widgets
 
@@ -275,15 +282,24 @@ All watcher services use the `notify` crate for filesystem events.
 ### Dialog
 - **Use when**: Modal dialogs for confirmation/information
 - **Enable/Install**: `features = ["dialog"]`
-- **Import/Invoke**: `use ratkit::{Dialog, DialogState, DialogType};`
+- **Import/Invoke**: `use ratkit::primitives::dialog::{Dialog, DialogWidget, DialogAction, DialogActionsLayout, DialogWrap, DialogShadow, DialogModalMode};`
 - **Minimal flow**:
-  1. Create `Dialog::new(title, message)` or use builder (`Dialog::confirm()`)
-  2. Set buttons with `.buttons(vec!["Yes", "No"])`
-  3. Create `DialogState::new()` for button selection
-  4. Render with `DialogWidget`
-- **Key APIs**: `new()`, `info()`, `warning()`, `error()`, `success()`, `confirm()`, `buttons()`
-- **Pitfalls**: DialogState must persist; uses StatefulWidget pattern
+  1. Create `Dialog::new(title, message)` or `Dialog::confirm(...)`
+  2. Configure layout and visuals with `.actions_layout(...)`, `.message_alignment(...)`, `.content_padding(...)`, `.wrap_mode(...)`, `.shadow(...)`, `.overlay(...)`
+  3. Configure actions/keys with `.buttons(...)`, `.default_selection(...)`, `.next_keys(...)`, `.previous_keys(...)`, `.confirm_keys(...)`, `.cancel_keys(...)`
+  4. In event loop, route keys to `dialog.handle_key_event(...)` and react to `DialogAction`
+  5. Render with `DialogWidget::new(&mut dialog)`
+- **Key APIs**: `actions_layout()`, `actions_alignment()`, `message_alignment()`, `content_padding()`, `wrap_mode()`, `hide_footer()`, `footer()`, `footer_style()`, `shadow()`, `overlay()`, `modal_mode()`, `body_renderer()`, `handle_key_event()`, `handle_mouse_confirm()`, `blocks_background_events()`
+- **Pitfalls**: If you want `Tab` to control inner body UI (for example a list) instead of dialog actions, remove `Tab` from dialog keymap and handle it in your app event loop; if you want no action row, set `.buttons(vec![])`
 - **Source**: `src/primitives/dialog/`
+
+### Dialog interaction patterns
+- **Vertical actions**: `.actions_layout(DialogActionsLayout::Vertical)` for stacked action menus
+- **Horizontal actions**: `.actions_layout(DialogActionsLayout::Horizontal)` for classic Yes/No rows
+- **No actions shown**: `.buttons(vec![])` hides the actions row so dialog body content can be primary
+- **Custom body widget**: implement `DialogBodyRenderer` and pass `.body_renderer(Box::new(...))` to render a selectable list/menu inside dialog chrome
+- **Blocking modal**: `.modal_mode(DialogModalMode::Blocking)` plus `blocks_background_events()` to prevent background input handling
+- **Tab delegation**: use `.next_keys(...)` / `.previous_keys(...)` to exclude `Tab` and route `Tab` to body-level focus/selection logic
 
 ### Toast
 - **Use when**: Auto-dismissing notifications
@@ -297,6 +313,19 @@ All watcher services use the `notify` crate for filesystem events.
 - **Key APIs**: `ToastManager::new()`, `.add()`, `.success()`, `.error()`, `.cleanup()`
 - **Pitfalls**: Must call `cleanup()` to remove expired; doesn't auto-expire
 - **Source**: `src/primitives/toast/`
+
+### MenuBar
+- **Use when**: Top-level horizontal navigation with mouse and keyboard selection
+- **Enable/Install**: `features = ["menu-bar"]` (auto-enables `widget-event`)
+- **Import/Invoke**: `use ratkit::primitives::menu_bar::{MenuBar, MenuItem};`
+- **Minimal flow**:
+  1. Create `MenuBar::new(vec![MenuItem::new("File", 0), ...])`
+  2. Optionally set initial selection with `.with_selected(index)`
+  3. On mouse move: call `update_hover(x, y)`; on click: call `handle_click(x, y)` or `handle_mouse(x, y)`
+  4. Render with `render()` or `render_with_offset()`
+- **Key APIs**: `new()`, `with_selected()`, `update_hover()`, `handle_click()`, `handle_mouse()`, `selected()`, `render_with_offset()`
+- **Pitfalls**: Border fills full container width; do not assume border auto-sizes to label content
+- **Source**: `src/primitives/menu_bar/menu_bar.rs`, `examples/menu-bar_menu_bar_demo.rs`
 
 ### TreeView
 - **Use when**: Hierarchical data with expand/collapse/selection
@@ -320,9 +349,16 @@ All watcher services use the `notify` crate for filesystem events.
   2. Create `MarkdownWidget::new(content, scroll, source, ...)`
   3. Handle keyboard with `handle_key()`
   4. Render with ratatui
-- **Key APIs**: `new()`, `handle_key()`, `handle_mouse()`, `.show_toc()`, `.show_scrollbar()`
-- **Pitfalls**: Requires mouse capture enabled; state must persist across renders
+- **Key APIs**: `new()`, `handle_key()`, `handle_mouse()`, `.show_toc()`, `.toggle_toc()`, `.with_frontmatter_collapsed()`, `set_frontmatter_collapsed()`, `.show_scrollbar()`
+- **Pitfalls**: Requires mouse capture enabled; state must persist across renders; frontmatter collapse is section-based (section id `0`); large markdown with many fenced code blocks can increase first-render time if syntax highlighter initialization is repeated (parser now reuses one `SyntaxHighlighter` per parse call)
 - **Source**: `src/widgets/markdown_preview/widgets/markdown_widget/`
+
+### Markdown demo variants
+- **Use when**: Choosing markdown content size for preview behavior checks
+- **Run**: `just demo-md` (opencode SDK skill markdown) and `just demo-md-small` (ratkit skill markdown)
+- **Expected behavior**: Both variants render with TOC, statusline, hover interactions, and copy support
+- **Startup profiling**: Run `target/debug/examples/markdown_preview_markdown_preview_demo --startup-probe` (with `RATKIT_MD_DEMO_FILE=...`) to print `MARKDOWN_DEMO_READY_MS=<ms>` for repeatable load-time comparisons
+- **Source**: `examples/markdown_preview_markdown_preview_demo.rs`, `justfiles/utilities/demo-md.just`
 
 ### FileSystemTree
 - **Use when**: Browsing local files/directories with icons and keyboard navigation
@@ -481,5 +517,5 @@ Use this section to transfer the demo's responsiveness patterns into other ratki
 
 ### Version
 
-- Current: 0.2.5
+- Current: 0.2.12
 - Rust: 1.70+
