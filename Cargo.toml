@@ -6,5 +6,10 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 crossterm = "0.28"
+regex = "1"
 ratatui = "0.29"
-ratkit = { version = "0.2.7", features = ["markdown-preview", "resizable-grid", "file-system-tree", "pane", "menu-bar", "hotkey-footer"] }
+ratkit = { version = "0.2.7", features = ["markdown-preview", "resizable-grid", "file-system-tree", "pane", "menu-bar", "hotkey-footer", "dialog"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+scraper = "0.20"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
