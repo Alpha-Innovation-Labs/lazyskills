@@ -148,7 +148,7 @@ impl SkillPreviewApp {
         let preview_pane_id = grid_layout.split_pane_vertically(0).unwrap_or(0);
         let _ = grid_layout.resize_divider(0, 20);
 
-        Self {
+        let mut app = Self {
             widget,
             menu: Self::build_menu(),
             skills_nodes,
@@ -176,7 +176,10 @@ impl SkillPreviewApp {
             show_hotkeys_modal: false,
             pending_preview_path: None,
             pending_preview_since: None,
-        }
+        };
+
+        app.open_selected_file_immediate();
+        app
     }
 
     fn show_toast(&mut self, message: impl Into<String>) {
@@ -236,6 +239,21 @@ impl SkillPreviewApp {
         }
         self.pending_preview_path = Some(selected_path);
         self.pending_preview_since = Some(Instant::now());
+    }
+
+    fn open_selected_file_immediate(&mut self) {
+        let Some(node) = self.selected_skill_node() else {
+            return;
+        };
+        let Some(path) = &node.skill_file else {
+            return;
+        };
+        if let Ok(source) = load_source_from_path(path) {
+            self.source_path = path.clone();
+            self.preview_title = extract_skill_name_from_frontmatter(&self.source_path)
+                .unwrap_or_else(|| fallback_title_from_path(&self.source_path));
+            self.widget = Self::build_widget(source, self.show_toc);
+        }
     }
 
     fn selected_skill_node(&self) -> Option<&SkillTreeNode> {
