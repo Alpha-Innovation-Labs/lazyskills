@@ -1,8 +1,10 @@
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use std::sync::mpsc::{self, Receiver, TryRecvError};
+use std::thread;
 use std::time::{Duration, Instant};
-use std::{collections::HashSet, fs};
 
+mod app;
 mod features;
 
 use crossterm::event::{
@@ -10,56 +12,112 @@ use crossterm::event::{
     MouseEvent as CrosstermMouseEvent, MouseEventKind,
 };
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Clear, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Clear, List, ListItem, ListState, Paragraph},
     Frame,
 };
 use ratkit::prelude::{
-    run, CoordinatorAction, CoordinatorApp, CoordinatorEvent, LayoutResult, MouseEvent,
-    RunnerConfig,
+    run, CoordinatorAction, CoordinatorApp, CoordinatorEvent, LayoutResult, RunnerConfig,
 };
+use ratkit::primitives::dialog::{DialogActionsLayout, DialogShadow, DialogWrap};
 use ratkit::primitives::menu_bar::{MenuBar, MenuItem};
 use ratkit::primitives::pane::Pane;
-use ratkit::primitives::resizable_grid::{
-    PaneId, ResizableGrid, ResizableGridWidget, ResizableGridWidgetState,
-};
-use ratkit::widgets::markdown_preview::{
-    CacheState, CollapseState, DisplaySettings, DoubleClickState, ExpandableState, GitStatsState,
-    MarkdownEvent, MarkdownWidget, ScrollState, SelectionState, SourceState, VimState,
-};
+use ratkit::widgets::markdown_preview::{MarkdownEvent, SourceState};
 use ratkit::widgets::{Dialog, DialogWidget};
 use ratkit::widgets::{HotkeyFooter, HotkeyItem};
 
-use crate::features::search::{logic as search_logic, state::SearchState};
+use crate::app::skills_tree::{
+    collect_expanded_skill_paths, first_skill_file, load_global_skill_hierarchy,
+    load_project_skill_hierarchy, load_source_from_path, preview_relative_to_skills,
+    skill_node_at_path, skill_remove_target_from_path, SkillTreeNode, DEFAULT_SKILL_PATH,
+};
+use crate::features::detail::render::{render_skill_detail_pane, SkillDetailPaneData};
+use crate::features::{
+    config::{logic as config_logic, state::ConfigState},
+    delete_confirm::{logic as delete_confirm_logic, state::DeleteConfirmDialogState},
+    detail::{logic as detail_logic, state::DetailState},
+    favorites::{logic as favorites_logic, state::FavoritesState},
+    preview::{logic as preview_logic, state::PreviewState},
+    search::{logic as search_logic, render as search_render, state::SearchState},
+    startup_dialog::{logic as startup_dialog_logic, state::StartupDialogState},
+    tree_nav::{
+        logic as tree_nav_logic,
+        state::{ExpandedSkillPaths, SkillPath},
+    },
+};
 use skills_tui::config::{
-    initialize_skills_command_config as initialize_app_config, persist_app_config, AppConfig,
-    SkillsCommandMode, APP_CONFIG_PATH,
+    initialize_skills_command_config as initialize_app_config, load_user_config,
+    persist_user_config, AppConfig, FavoriteSkill, UserConfig, APP_CONFIG_PATH,
 };
 use skills_tui::services::skills_command::{
-    install_global_skills_cli, run_configured_skills_command, verify_global_skills_command,
+    install_skill_from_slug_global, install_skill_from_slug_with_agents,
+    patch_project_lock_after_remove, remove_skill_noninteractive,
+    remove_skill_noninteractive_scoped, run_configured_skills_command,
 };
 
-const DEFAULT_SKILL_PATH: &str = ".agents/skills/ratkit/SKILL.md";
-const ROOT_AGENTS_PATH: &str = ".agents";
 const TERMINAL_ICON: &str = "";
 const YAZI_CYAN: Color = Color::Rgb(3, 169, 244);
+const UNFOCUSED_PANE_BORDER: Color = Color::Rgb(42, 51, 64);
+const FAVORITE_ORANGE: Color = Color::Rgb(255, 209, 102);
+const SUPPORTED_AGENTS: &[&str] = &[
+    "adal",
+    "amp",
+    "antigravity",
+    "augment",
+    "claude-code",
+    "cline",
+    "codebuddy",
+    "codex",
+    "command-code",
+    "continue",
+    "cortex",
+    "crush",
+    "cursor",
+    "droid",
+    "gemini-cli",
+    "github-copilot",
+    "goose",
+    "iflow-cli",
+    "junie",
+    "kilo",
+    "kimi-cli",
+    "kiro-cli",
+    "kode",
+    "mcpjam",
+    "mistral-vibe",
+    "mux",
+    "neovate",
+    "opencode",
+    "openclaw",
+    "openhands",
+    "pi",
+    "pochi",
+    "qoder",
+    "qwen-code",
+    "replit",
+    "roo",
+    "trae",
+    "trae-cn",
+    "universal",
+    "windsurf",
+    "zencoder",
+];
 
-enum StartupDialogState {
-    Info {
-        title: String,
-        message: String,
-    },
-    ChooseCommand {
-        selected_button: usize,
-        error_message: Option<String>,
-    },
-}
-
-struct DeleteConfirmDialogState {
-    selected_button: usize,
-    skill_name: String,
+fn truncate_to_width(value: &str, width: usize) -> String {
+    if width == 0 {
+        return String::new();
+    }
+    if value.chars().count() <= width {
+        return value.to_string();
+    }
+    if width <= 3 {
+        return value.chars().take(width).collect::<String>();
+    }
+    let mut out = value.chars().take(width - 3).collect::<String>();
+    out.push_str("...");
+    out
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -77,52 +135,64 @@ enum AppView {
     Config,
 }
 
-#[derive(Clone, Debug)]
-struct SkillTreeNode {
-    dir_name: String,
-    display_name: String,
-    skill_file: Option<PathBuf>,
-    children: Vec<SkillTreeNode>,
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum InstallOrigin {
+    Search,
+    Favorites,
+}
+
+#[derive(Debug)]
+enum InstallModalPhase {
+    Installing,
+    Finished { success: bool, message: String },
+}
+
+struct InstallModalState {
+    slug: String,
+    scope_label: String,
+    origin: InstallOrigin,
+    phase: InstallModalPhase,
+    receiver: Option<Receiver<Result<String, String>>>,
+}
+
+struct AgentPickerModalState {
+    query: String,
+    selected_agents: Vec<String>,
+    selected_index: usize,
+    required_on_startup: bool,
 }
 
 struct SkillPreviewApp {
     app_config: AppConfig,
     startup_dialog: Option<StartupDialogState>,
-    widget: MarkdownWidget<'static>,
+    preview: PreviewState,
     menu: MenuBar,
     project_skills_nodes: Vec<SkillTreeNode>,
     global_skills_nodes: Vec<SkillTreeNode>,
-    favorite_skills_nodes: Vec<SkillTreeNode>,
-    skills_selected_path: Option<Vec<usize>>,
-    skills_expanded: HashSet<Vec<usize>>,
+    favorites: FavoritesState,
+    skills_selected_path: Option<SkillPath>,
+    skills_expanded: ExpandedSkillPaths,
     skills_offset: usize,
-    source_path: PathBuf,
-    preview_title: String,
-    show_toc: bool,
     current_view: AppView,
     focus: FocusPane,
-    grid_layout: ResizableGrid,
-    grid_state: ResizableGridWidgetState,
     navbar_area: Rect,
     grid_area: Rect,
-    tree_pane_id: PaneId,
-    preview_pane_id: PaneId,
     tree_area: Rect,
     tree_content_area: Rect,
     markdown_area: Rect,
+    detail_area: Rect,
     markdown_inner_area: Rect,
     last_move_processed: Instant,
     toast_message: Option<String>,
     toast_expires_at: Option<Instant>,
     show_hotkeys_modal: bool,
     delete_confirm_dialog: Option<DeleteConfirmDialogState>,
-    pending_preview_path: Option<PathBuf>,
-    pending_preview_since: Option<Instant>,
+    install_modal: Option<InstallModalState>,
+    agent_picker_modal: Option<AgentPickerModalState>,
+    pending_startup_agent_picker: bool,
+    detail: DetailState,
     search: SearchState,
-    config_selected_field: usize,
-    config_value_cursor: usize,
-    config_status: String,
-    config_dirty: bool,
+    config: ConfigState,
 }
 
 impl SkillPreviewApp {
@@ -143,6 +213,55 @@ impl SkillPreviewApp {
         }
     }
 
+    fn first_selectable_skill_path(nodes: &[SkillTreeNode]) -> Option<Vec<usize>> {
+        fn walk(nodes: &[SkillTreeNode], base: &mut Vec<usize>) -> Option<Vec<usize>> {
+            for (idx, node) in nodes.iter().enumerate() {
+                base.push(idx);
+                if node.skill_file.is_some() {
+                    return Some(base.clone());
+                }
+                if let Some(path) = walk(&node.children, base) {
+                    return Some(path);
+                }
+                let _ = base.pop();
+            }
+            None
+        }
+
+        walk(nodes, &mut Vec::new())
+    }
+
+    fn reset_selection_to_first_skill(&mut self) {
+        let nodes = self.active_skills_nodes();
+        self.skills_selected_path =
+            Self::first_selectable_skill_path(nodes).or_else(|| nodes.first().map(|_| vec![0]));
+    }
+
+    fn toggle_project_global_detail_pane(&mut self) {
+        let show_detail_pane = detail_logic::toggle_project_global_detail_pane(&mut self.detail);
+        self.markdown_area = Rect::default();
+        self.detail_area = Rect::default();
+
+        if let Err(err) = self.persist_favorites() {
+            self.show_toast(format!("Failed to save UI settings: {}", err));
+        }
+
+        if show_detail_pane {
+            self.queue_project_global_detail_refresh();
+        }
+    }
+
+    fn toggle_project_global_markdown_pane(&mut self) {
+        self.preview.show_markdown_pane = !self.preview.show_markdown_pane;
+        self.markdown_area = Rect::default();
+        self.markdown_inner_area = Rect::default();
+        self.detail_area = Rect::default();
+
+        if let Err(err) = self.persist_favorites() {
+            self.show_toast(format!("Failed to save UI settings: {}", err));
+        }
+    }
+
     fn set_view(&mut self, view: AppView) {
         self.current_view = view;
         match view {
@@ -157,16 +276,32 @@ impl SkillPreviewApp {
             view,
             AppView::Project | AppView::Global | AppView::Favorites
         ) {
+            self.markdown_area = Rect::default();
+            self.markdown_inner_area = Rect::default();
+            self.detail_area = Rect::default();
+
             self.skills_offset = 0;
-            self.skills_selected_path = Some(vec![0]);
-            self.pending_preview_path = None;
-            self.pending_preview_since = None;
+            self.reset_selection_to_first_skill();
+            preview_logic::clear_pending(&mut self.preview);
             self.ensure_skill_selection_visible();
             self.open_selected_file_immediate();
-        } else if matches!(view, AppView::Search) && self.search.search_results.is_empty() {
-            self.refresh_search_results();
+            if self.detail.show_detail_pane
+                && matches!(
+                    view,
+                    AppView::Project | AppView::Global | AppView::Favorites
+                )
+            {
+                self.refresh_project_global_detail_now();
+            }
+        } else if matches!(view, AppView::Search) {
+            self.detail_area = Rect::default();
+            self.search.input_focused = false;
+            self.search.search_status = "Press / to focus search input".to_string();
+            if self.search.search_results.is_empty() {
+                self.refresh_search_results();
+            }
         } else if matches!(view, AppView::Config) {
-            self.config_status = "Edit values. Ctrl+S save. Up/Down select field.".to_string();
+            self.config.status = "Edit values. Ctrl+S save. Up/Down select field.".to_string();
         }
     }
 
@@ -186,6 +321,137 @@ impl SkillPreviewApp {
         search_logic::queue_selected_search_detail(&mut self.search);
     }
 
+    fn begin_install_modal(
+        &mut self,
+        slug: String,
+        scope_label: &str,
+        global_install: bool,
+        origin: InstallOrigin,
+    ) {
+        let (tx, rx) = mpsc::channel::<Result<String, String>>();
+        let skills_config = self.app_config.skills_command.clone();
+        let default_agents = self.app_config.skills_command.default_agents.clone();
+        let slug_for_worker = slug.clone();
+        thread::spawn(move || {
+            let result = if global_install {
+                install_skill_from_slug_global(&skills_config, &slug_for_worker)
+            } else {
+                install_skill_from_slug_with_agents(
+                    &skills_config,
+                    &slug_for_worker,
+                    &default_agents,
+                )
+            };
+            let _ = tx.send(result);
+        });
+
+        self.install_modal = Some(InstallModalState {
+            slug,
+            scope_label: scope_label.to_string(),
+            origin,
+            phase: InstallModalPhase::Installing,
+            receiver: Some(rx),
+        });
+    }
+
+    fn poll_install_modal_progress(&mut self) -> bool {
+        let Some(modal) = self.install_modal.as_mut() else {
+            return false;
+        };
+        if !matches!(modal.phase, InstallModalPhase::Installing) {
+            return false;
+        }
+        let Some(receiver) = modal.receiver.as_ref() else {
+            return false;
+        };
+
+        let slug = modal.slug.clone();
+        let scope_label = modal.scope_label.clone();
+        let origin = modal.origin;
+
+        match receiver.try_recv() {
+            Ok(result) => {
+                modal.receiver = None;
+
+                let (success, msg) = match result {
+                    Ok(_) => (true, format!("Installed {} to {}", slug, scope_label)),
+                    Err(err) => (false, format!("Install failed for {}: {}", slug, err)),
+                };
+
+                if success {
+                    self.refresh_skill_hierarchies();
+                    self.show_toast(msg.clone());
+                }
+                if matches!(origin, InstallOrigin::Search) {
+                    self.search.search_status = msg.clone();
+                }
+                if let Some(modal) = self.install_modal.as_mut() {
+                    modal.phase = InstallModalPhase::Finished {
+                        success,
+                        message: msg,
+                    };
+                }
+                true
+            }
+            Err(TryRecvError::Empty) => false,
+            Err(TryRecvError::Disconnected) => {
+                modal.receiver = None;
+                if let Some(modal) = self.install_modal.as_mut() {
+                    modal.phase = InstallModalPhase::Finished {
+                        success: false,
+                        message: format!("Install failed for {}: worker disconnected", slug),
+                    };
+                }
+                true
+            }
+        }
+    }
+
+    fn open_agent_picker_modal(&mut self, required_on_startup: bool) {
+        let mut selected = self.app_config.skills_command.default_agents.clone();
+        selected.sort();
+        selected.dedup();
+        self.agent_picker_modal = Some(AgentPickerModalState {
+            query: String::new(),
+            selected_agents: selected,
+            selected_index: 0,
+            required_on_startup,
+        });
+    }
+
+    fn filtered_agent_keys(query: &str) -> Vec<&'static str> {
+        let q = query.trim().to_ascii_lowercase();
+        let mut items = SUPPORTED_AGENTS
+            .iter()
+            .copied()
+            .filter(|agent| q.is_empty() || agent.to_ascii_lowercase().contains(&q))
+            .collect::<Vec<_>>();
+        items.sort();
+        items
+    }
+
+    fn save_agent_picker_selection(&mut self) {
+        let Some(modal) = self.agent_picker_modal.as_ref() else {
+            return;
+        };
+        let mut selected = modal.selected_agents.clone();
+        selected.sort();
+        selected.dedup();
+        self.app_config.skills_command.default_agents = selected.clone();
+        match skills_tui::config::persist_app_config(&self.app_config) {
+            Ok(_) => {
+                self.pending_startup_agent_picker = false;
+                self.show_toast(format!(
+                    "Saved {} default agent(s)",
+                    self.app_config.skills_command.default_agents.len()
+                ));
+            }
+            Err(err) => {
+                self.show_toast(format!("Failed to save default agents: {err}"));
+            }
+        }
+    }
+
     fn install_selected_search_skill(&mut self) {
         let slug = match search_logic::install_selected_search_skill_slug(&self.search) {
             Ok(slug) => slug,
@@ -194,318 +460,384 @@ impl SkillPreviewApp {
                 return;
             }
         };
+        self.begin_install_modal(slug, "project (local)", false, InstallOrigin::Search);
+    }
+
+    fn selected_search_slug(&self) -> Result<String, String> {
+        search_logic::install_selected_search_skill_slug(&self.search)
+    }
+
+    fn search_skill_name_from_slug(slug: &str) -> &str {
+        slug.rsplit('/').next().unwrap_or(slug)
+    }
+
+    fn node_matches_search_slug(node: &SkillTreeNode, slug: &str) -> bool {
+        let Some(metadata) = favorites_logic::favorite_for_node(node) else {
+            return false;
+        };
+        favorites_logic::favorite_matches_search_slug(&metadata, slug)
+    }
+
+    fn find_skill_path_for_search_slug(
+        nodes: &[SkillTreeNode],
+        slug: &str,
+        path: &mut Vec<usize>,
+    ) -> Option<SkillPath> {
+        for (idx, node) in nodes.iter().enumerate() {
+            path.push(idx);
+            if Self::node_matches_search_slug(node, slug) {
+                return Some(path.clone());
+            }
+            if let Some(found) = Self::find_skill_path_for_search_slug(&node.children, slug, path) {
+                return Some(found);
+            }
+            let _ = path.pop();
+        }
+        None
+    }
+
+    fn find_installed_search_target(&self, slug: &str) -> Option<(AppView, SkillPath)> {
+        if let Some(path) =
+            Self::find_skill_path_for_search_slug(&self.project_skills_nodes, slug, &mut Vec::new())
+        {
+            return Some((AppView::Project, path));
+        }
+        if let Some(path) =
+            Self::find_skill_path_for_search_slug(&self.global_skills_nodes, slug, &mut Vec::new())
+        {
+            return Some((AppView::Global, path));
+        }
+        None
+    }
+
+    fn is_search_skill_installed(&self, slug: &str) -> bool {
+        self.find_installed_search_target(slug).is_some()
+    }
+
+    fn open_installed_search_preview(&mut self, slug: &str) -> bool {
+        let Some((view, path)) = self.find_installed_search_target(slug) else {
+            return false;
+        };
+
+        self.set_view(view);
+        self.skills_selected_path = Some(path);
+        self.ensure_skill_selection_visible();
+        self.open_selected_file_immediate();
+        self.focus = FocusPane::Preview;
+        if self.detail.show_detail_pane
+            && matches!(
+                self.current_view,
+                AppView::Project | AppView::Global | AppView::Favorites
+            )
+        {
+            self.refresh_project_global_detail_now();
+        }
+        true
+    }
+
+    fn update_selected_search_skill(&mut self) {
+        let slug = match self.selected_search_slug() {
+            Ok(slug) => slug,
+            Err(message) => {
+                self.search.search_status = message;
+                return;
+            }
+        };
+
+        if !self.is_search_skill_installed(&slug) {
+            self.search.search_status = "Update skipped: skill is not installed".to_string();
+            return;
+        }
 
         match run_configured_skills_command(&self.app_config.skills_command, &["add", &slug]) {
             Ok(_) => {
                 self.refresh_skill_hierarchies();
-                self.show_toast(format!("Installed {slug}"));
-                self.search.search_status = format!("Installed {slug}");
+                self.show_toast(format!("Updated {slug}"));
+                self.search.search_status = format!("Updated {slug}");
             }
             Err(err) => {
-                self.search.search_status = format!("Install failed: {err}");
+                self.search.search_status = format!("Update failed: {err}");
             }
         }
+    }
+
+    fn remove_selected_search_skill(&mut self) {
+        let slug = match self.selected_search_slug() {
+            Ok(slug) => slug,
+            Err(message) => {
+                self.search.search_status = message;
+                return;
+            }
+        };
+
+        if !self.is_search_skill_installed(&slug) {
+            self.search.search_status = "Remove skipped: skill is not installed".to_string();
+            return;
+        }
+
+        let fallback = Self::search_skill_name_from_slug(&slug).to_string();
+        let removed = remove_skill_noninteractive(&self.app_config.skills_command, &slug)
+            .or_else(|_| remove_skill_noninteractive(&self.app_config.skills_command, &fallback));
+        match removed {
+            Ok(_) => {
+                self.refresh_skill_hierarchies();
+                self.search.search_status = format!("Removed {slug}");
+                self.show_toast(format!("Removed {slug}"));
+            }
+            Err(err) => {
+                self.search.search_status = format!("Remove failed: {err}");
+            }
+        }
+    }
+
+    fn toggle_selected_search_favorite(&mut self) {
+        let slug = match search_logic::install_selected_search_skill_slug(&self.search) {
+            Ok(slug) => slug,
+            Err(message) => {
+                self.search.search_status = message;
+                return;
+            }
+        };
+
+        let (install_skill, source) =
+            if let Some((owner, repo, skill)) = search_logic::split_slug(&slug) {
+                (skill.to_string(), Some(format!("{owner}/{repo}")))
+            } else {
+                (slug.clone(), None)
+            };
+
+        self.toggle_favorite_slug(FavoriteSkill {
+            display_slug: install_skill.clone(),
+            install_skill,
+            source,
+            source_type: Some("github".to_string()),
+        });
     }
 
     fn flush_pending_search_detail_if_ready(&mut self) -> bool {
         search_logic::flush_pending_search_detail_if_ready(&mut self.search)
     }
 
-    fn config_field_count(&self) -> usize {
-        2
+    fn queue_project_global_detail_refresh(&mut self) {
+        let slug = if matches!(
+            self.current_view,
+            AppView::Project | AppView::Global | AppView::Favorites
+        ) {
+            self.selected_skill_identity().and_then(|(_, favorite, _)| {
+                detail_logic::selected_project_global_slug(&favorite)
+                    .or_else(|| self.resolve_global_slug_via_search(&favorite))
+            })
+        } else {
+            None
+        };
+        detail_logic::queue_project_global_detail_refresh(&mut self.detail, slug);
     }
 
-    fn config_field_label(index: usize) -> &'static str {
-        match index {
-            0 => "mode",
-            1 => "command",
-            _ => "",
-        }
+    fn refresh_project_global_detail_now(&mut self) {
+        let slug = if matches!(
+            self.current_view,
+            AppView::Project | AppView::Global | AppView::Favorites
+        ) {
+            self.selected_skill_identity().and_then(|(_, favorite, _)| {
+                detail_logic::selected_project_global_slug(&favorite)
+                    .or_else(|| self.resolve_global_slug_via_search(&favorite))
+            })
+        } else {
+            None
+        };
+
+        let _ = detail_logic::fetch_project_global_detail_now(
+            &mut self.detail,
+            self.search.search_client.as_ref(),
+            slug.as_deref(),
+        );
     }
 
-    fn config_field_value(&self, index: usize) -> String {
-        match index {
-            0 => match self.app_config.skills_command.mode {
-                SkillsCommandMode::Global => "global".to_string(),
-                SkillsCommandMode::Npx => "npx".to_string(),
-            },
-            1 => match self.app_config.skills_command.mode {
-                SkillsCommandMode::Global => self.app_config.skills_command.global_command.clone(),
-                SkillsCommandMode::Npx => self.app_config.skills_command.npx_command.clone(),
-            },
-            _ => String::new(),
+    fn resolve_global_slug_via_search(&self, favorite: &FavoriteSkill) -> Option<String> {
+        let client = self.search.search_client.as_ref()?;
+        let skill_name = favorite.install_skill.trim();
+        if skill_name.is_empty() {
+            return None;
         }
+
+        let response = client.fetch_search_cached_swr(skill_name, 25).ok()?;
+        let exact = response
+            .skills
+            .iter()
+            .filter(|item| {
+                item.skill_id
+                    .as_deref()
+                    .map(|id| id.eq_ignore_ascii_case(skill_name))
+                    .unwrap_or(false)
+            })
+            .max_by_key(|item| item.installs);
+
+        let candidate = exact.or_else(|| {
+            response
+                .skills
+                .iter()
+                .filter(|item| {
+                    item.id
+                        .as_ref()
+                        .map(|id| id.ends_with(&format!("/{skill_name}")))
+                        .unwrap_or(false)
+                })
+                .max_by_key(|item| item.installs)
+        })?;
+
+        if let Some(id) = &candidate.id {
+            if !id.is_empty() {
+                return Some(id.clone());
+            }
+        }
+
+        let skill_id = candidate.skill_id.as_ref()?;
+        if candidate.source.is_empty() {
+            return None;
+        }
+        Some(format!("{}/{}", candidate.source, skill_id))
     }
 
-    fn set_selected_config_value(&mut self, value: String) {
-        match self.config_selected_field {
-            1 => match self.app_config.skills_command.mode {
-                SkillsCommandMode::Global => self.app_config.skills_command.global_command = value,
-                SkillsCommandMode::Npx => self.app_config.skills_command.npx_command = value,
-            },
-            _ => {}
-        }
-    }
-
-    fn is_text_config_field(&self) -> bool {
-        self.config_selected_field == 1
-    }
-
-    fn toggle_config_field(&mut self) {
-        match self.config_selected_field {
-            0 => {
-                self.app_config.skills_command.mode = match self.app_config.skills_command.mode {
-                    SkillsCommandMode::Global => SkillsCommandMode::Npx,
-                    SkillsCommandMode::Npx => SkillsCommandMode::Global,
-                }
-            }
-            _ => {}
-        }
-        self.config_dirty = true;
-    }
-
-    fn render_config_value_with_cursor(&self, value: &str) -> String {
-        if !self.is_text_config_field() {
-            return value.to_string();
-        }
-
-        let chars: Vec<char> = value.chars().collect();
-        let mut out = String::new();
-        for (idx, ch) in chars.iter().enumerate() {
-            if idx == self.config_value_cursor {
-                out.push('▏');
-            }
-            out.push(*ch);
-        }
-        if self.config_value_cursor >= chars.len() {
-            out.push('▏');
-        }
-        out
-    }
-
-    fn handle_config_key(&mut self, key: CrosstermKeyEvent) -> CoordinatorAction {
-        if key
-            .modifiers
-            .contains(crossterm::event::KeyModifiers::CONTROL)
-            && matches!(key.code, KeyCode::Char('s'))
-        {
-            match persist_app_config(&self.app_config) {
-                Ok(_) => {
-                    self.config_dirty = false;
-                    self.config_status = format!("Saved {}", APP_CONFIG_PATH);
-                }
-                Err(err) => {
-                    self.config_status = format!("Save failed: {err}");
-                }
-            }
-            return CoordinatorAction::Redraw;
-        }
-
-        match key.code {
-            KeyCode::Up | KeyCode::Char('k') => {
-                self.config_selected_field = self.config_selected_field.saturating_sub(1);
-                self.config_value_cursor = self
-                    .config_field_value(self.config_selected_field)
-                    .chars()
-                    .count();
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                self.config_selected_field = (self.config_selected_field + 1)
-                    .min(self.config_field_count().saturating_sub(1));
-                self.config_value_cursor = self
-                    .config_field_value(self.config_selected_field)
-                    .chars()
-                    .count();
-            }
-            KeyCode::Left | KeyCode::Char('h') => {
-                if self.is_text_config_field() {
-                    self.config_value_cursor = self.config_value_cursor.saturating_sub(1);
-                } else {
-                    self.toggle_config_field();
-                }
-            }
-            KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter => {
-                if self.is_text_config_field() {
-                    let len = self
-                        .config_field_value(self.config_selected_field)
-                        .chars()
-                        .count();
-                    self.config_value_cursor = (self.config_value_cursor + 1).min(len);
-                } else {
-                    self.toggle_config_field();
-                }
-            }
-            KeyCode::Backspace if self.is_text_config_field() => {
-                let mut value = self.config_field_value(self.config_selected_field);
-                if self.config_value_cursor > 0 {
-                    let mut chars: Vec<char> = value.chars().collect();
-                    let idx = self.config_value_cursor - 1;
-                    chars.remove(idx);
-                    value = chars.into_iter().collect();
-                    self.config_value_cursor = idx;
-                    self.set_selected_config_value(value);
-                    self.config_dirty = true;
-                }
-            }
-            KeyCode::Delete if self.is_text_config_field() => {
-                let mut value = self.config_field_value(self.config_selected_field);
-                let mut chars: Vec<char> = value.chars().collect();
-                if self.config_value_cursor < chars.len() {
-                    chars.remove(self.config_value_cursor);
-                    value = chars.into_iter().collect();
-                    self.set_selected_config_value(value);
-                    self.config_dirty = true;
-                }
-            }
-            KeyCode::Char(ch)
-                if self.is_text_config_field()
-                    && !key
-                        .modifiers
-                        .intersects(crossterm::event::KeyModifiers::CONTROL)
-                    && !key
-                        .modifiers
-                        .intersects(crossterm::event::KeyModifiers::ALT) =>
-            {
-                let mut value = self.config_field_value(self.config_selected_field);
-                let mut chars: Vec<char> = value.chars().collect();
-                chars.insert(self.config_value_cursor, ch);
-                value = chars.into_iter().collect();
-                self.config_value_cursor += 1;
-                self.set_selected_config_value(value);
-                self.config_dirty = true;
-            }
-            _ => {}
-        }
-
-        CoordinatorAction::Redraw
+    fn flush_pending_project_global_detail_if_ready(&mut self) -> bool {
+        detail_logic::flush_pending_project_global_detail_if_ready(
+            &mut self.detail,
+            self.search.search_client.as_ref(),
+        )
     }
 
     fn active_skills_nodes(&self) -> &[SkillTreeNode] {
         match self.current_view {
             AppView::Project | AppView::Search => &self.project_skills_nodes,
             AppView::Global => &self.global_skills_nodes,
-            AppView::Favorites => &self.favorite_skills_nodes,
+            AppView::Favorites => &self.favorites.nodes,
             AppView::Config => &self.project_skills_nodes,
         }
     }
 
-    fn skill_key_from_path(path: &Path) -> String {
-        let project_root = PathBuf::from(ROOT_AGENTS_PATH);
-        if let Ok(relative) = path.strip_prefix(&project_root) {
-            return format!("project:{}", relative.display());
-        }
-
-        let global_root = global_agents_skill_root();
-        if let Ok(relative) = path.strip_prefix(&global_root) {
-            return format!("global:{}", relative.display());
-        }
-
-        for (provider, root) in provider_global_skill_roots() {
-            if let Ok(relative) = path.strip_prefix(&root) {
-                return format!("global:{}/{}", provider, relative.display());
-            }
-        }
-
-        format!("path:{}", path.display())
-    }
-
-    fn skill_remove_target_from_path(path: &Path) -> String {
-        let skill_parent = path.parent().unwrap_or(path);
-        let project_root = PathBuf::from(ROOT_AGENTS_PATH).join("skills");
-        if let Ok(relative) = skill_parent.strip_prefix(&project_root) {
-            return relative.display().to_string();
-        }
-
-        let global_root = global_agents_skill_root();
-        if let Ok(relative) = skill_parent.strip_prefix(&global_root) {
-            return relative.display().to_string();
-        }
-
-        for (provider, root) in provider_global_skill_roots() {
-            if let Ok(relative) = skill_parent.strip_prefix(&root) {
-                return format!("{}/{}", provider, relative.display());
-            }
-        }
-
-        skill_parent
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("")
-            .to_string()
-    }
-
-    fn selected_skill_identity(&self) -> Option<(PathBuf, String, String)> {
+    fn selected_skill_identity(&self) -> Option<(PathBuf, FavoriteSkill, String)> {
         let node = self.selected_skill_node()?;
         let skill_file = node.skill_file.as_ref()?.clone();
-        let key = Self::skill_key_from_path(&skill_file);
-        let remove_target = Self::skill_remove_target_from_path(&skill_file);
-        Some((skill_file, key, remove_target))
+        let favorite = self.favorite_for_node(node)?;
+        let remove_target = favorite
+            .install_skill
+            .rsplit('/')
+            .next()
+            .unwrap_or(&favorite.install_skill)
+            .to_string();
+        Some((skill_file, favorite, remove_target))
+    }
+
+    fn persist_favorites(&self) -> io::Result<()> {
+        persist_user_config(&UserConfig {
+            favorites: self.favorites.entries.clone(),
+            ui: skills_tui::config::UiPreferences {
+                show_markdown_pane: self.preview.show_markdown_pane,
+                show_detail_pane: self.detail.show_detail_pane,
+            },
+        })
+    }
+
+    fn favorite_for_node(&self, node: &SkillTreeNode) -> Option<FavoriteSkill> {
+        favorites_logic::favorite_for_node(node)
+    }
+
+    fn favorite_matches_dir_name(favorite: &FavoriteSkill, dir_name: &str) -> bool {
+        if favorite.display_slug == dir_name || favorite.install_skill == dir_name {
+            return true;
+        }
+        if let Some(source) = favorite.source.as_ref() {
+            let full = format!("{}/{}", source, favorite.install_skill);
+            if full == dir_name {
+                return true;
+            }
+        }
+        dir_name.ends_with(&format!("/{}", favorite.install_skill))
+    }
+
+    fn selected_favorite_entry(&self) -> Option<FavoriteSkill> {
+        if self.current_view != AppView::Favorites {
+            return None;
+        }
+        let node = self.selected_skill_node()?;
+        self.favorites
+            .entries
+            .iter()
+            .find(|favorite| Self::favorite_matches_dir_name(favorite, &node.dir_name))
+            .cloned()
+    }
+
+    fn favorite_install_target(favorite: &FavoriteSkill) -> String {
+        if let Some(source) = favorite.source.as_ref() {
+            format!("{}/{}", source, favorite.install_skill)
+        } else {
+            favorite.install_skill.clone()
+        }
+    }
+
+    fn skill_installed_in_nodes(nodes: &[SkillTreeNode], favorite: &FavoriteSkill) -> bool {
+        for node in nodes {
+            if let Some(skill_file) = node.skill_file.as_ref() {
+                let slug = skill_remove_target_from_path(skill_file);
+                if Self::favorite_matches_dir_name(favorite, &slug) {
+                    return true;
+                }
+            }
+            if Self::skill_installed_in_nodes(&node.children, favorite) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn install_selected_favorite(&mut self) {
+        let Some(favorite) = self.selected_favorite_entry() else {
+            self.show_toast("Select a favorite to install");
+            return;
+        };
+        let install_target = Self::favorite_install_target(&favorite);
+        self.begin_install_modal(
+            install_target,
+            "project (local)",
+            false,
+            InstallOrigin::Favorites,
+        );
+    }
+
+    fn install_selected_favorite_global(&mut self) {
+        let Some(favorite) = self.selected_favorite_entry() else {
+            self.show_toast("Select a favorite to install");
+            return;
+        };
+        let install_target = Self::favorite_install_target(&favorite);
+        self.begin_install_modal(install_target, "global", true, InstallOrigin::Favorites);
+    }
+
+    fn toggle_favorite_slug(&mut self, favorite: FavoriteSkill) {
+        if favorites_logic::toggle(&mut self.favorites.entries, favorite) {
+            self.show_toast("Added to favorites");
+        } else {
+            self.show_toast("Removed from favorites");
+        }
+
+        if let Err(err) = self.persist_favorites() {
+            self.show_toast(format!("Failed to save favorites: {}", err));
+        }
+        self.rebuild_favorites_nodes();
     }
 
     fn is_favorite_node(&self, node: &SkillTreeNode) -> bool {
-        let Some(path) = node.skill_file.as_ref() else {
+        let Some(display_slug) = favorites_logic::display_slug_for_node(node) else {
             return false;
         };
-        let key = Self::skill_key_from_path(path);
-        self.app_config
-            .favorite_skills
-            .iter()
-            .any(|item| item == &key)
-    }
-
-    fn collect_favorite_nodes_from(
-        nodes: &[SkillTreeNode],
-        favorite_keys: &HashSet<String>,
-        source: &str,
-        out: &mut Vec<SkillTreeNode>,
-        seen: &mut HashSet<String>,
-    ) {
-        for node in nodes {
-            if let Some(path) = node.skill_file.as_ref() {
-                let key = Self::skill_key_from_path(path);
-                if favorite_keys.contains(&key) && !seen.contains(&key) {
-                    seen.insert(key);
-                    out.push(SkillTreeNode {
-                        dir_name: node.dir_name.clone(),
-                        display_name: format!("{} ({})", node.display_name, source),
-                        skill_file: Some(path.clone()),
-                        children: Vec::new(),
-                    });
-                }
-            }
-            Self::collect_favorite_nodes_from(&node.children, favorite_keys, source, out, seen);
-        }
+        favorites_logic::contains_display_slug(&self.favorites.entries, &display_slug)
     }
 
     fn rebuild_favorites_nodes(&mut self) {
-        let favorite_keys = self
-            .app_config
-            .favorite_skills
-            .iter()
-            .cloned()
-            .collect::<HashSet<_>>();
-
-        let mut nodes = Vec::new();
-        let mut seen = HashSet::new();
-        Self::collect_favorite_nodes_from(
+        self.favorites.nodes = favorites_logic::rebuild_nodes(
+            &self.favorites.entries,
             &self.project_skills_nodes,
-            &favorite_keys,
-            "project",
-            &mut nodes,
-            &mut seen,
-        );
-        Self::collect_favorite_nodes_from(
             &self.global_skills_nodes,
-            &favorite_keys,
-            "global",
-            &mut nodes,
-            &mut seen,
         );
-
-        self.favorite_skills_nodes = nodes;
-        self.app_config
-            .favorite_skills
-            .retain(|key| seen.contains(key));
     }
 
     fn refresh_skill_hierarchies(&mut self) {
@@ -521,44 +853,44 @@ impl SkillPreviewApp {
     }
 
     fn toggle_selected_favorite(&mut self) {
-        let Some((_, key, _)) = self.selected_skill_identity() else {
+        if let Some(existing) = self.selected_favorite_entry() {
+            self.toggle_favorite_slug(existing);
+            return;
+        }
+
+        let Some(node) = self.selected_skill_node() else {
             self.show_toast("No selectable skill");
             return;
         };
-
-        if let Some(idx) = self
-            .app_config
-            .favorite_skills
-            .iter()
-            .position(|item| item == &key)
-        {
-            self.app_config.favorite_skills.remove(idx);
-            self.show_toast("Removed from favorites");
-        } else {
-            self.app_config.favorite_skills.push(key);
-            self.show_toast("Added to favorites");
-        }
-
-        if let Err(err) = persist_app_config(&self.app_config) {
-            self.show_toast(format!("Failed to save config: {}", err));
-        }
-        self.rebuild_favorites_nodes();
+        let Some(favorite) = self.favorite_for_node(node) else {
+            self.show_toast("Cannot determine favorite metadata for this skill");
+            return;
+        };
+        self.toggle_favorite_slug(favorite);
     }
 
     fn delete_selected_skill(&mut self) {
-        let Some((_, key, remove_target)) = self.selected_skill_identity() else {
+        let Some((_, favorite, remove_target)) = self.selected_skill_identity() else {
             self.show_toast("Select a skill file to delete");
             return;
         };
 
-        match run_configured_skills_command(
-            &self.app_config.skills_command,
-            &["remove", &remove_target],
-        ) {
+        let remove_result = if self.current_view == AppView::Global {
+            remove_skill_noninteractive_scoped(
+                &self.app_config.skills_command,
+                &remove_target,
+                true,
+            )
+        } else {
+            remove_skill_noninteractive(&self.app_config.skills_command, &remove_target)
+        };
+
+        match remove_result {
             Ok(_) => {
-                self.app_config.favorite_skills.retain(|item| item != &key);
-                if let Err(err) = persist_app_config(&self.app_config) {
-                    self.show_toast(format!("Deleted skill, but config update failed: {}", err));
+                if let Ok(cwd) = std::env::current_dir() {
+                    if let Err(err) = patch_project_lock_after_remove(&cwd, &favorite) {
+                        self.show_toast(format!("Deleted skill, lock patch failed: {}", err));
+                    }
                 }
                 self.refresh_skill_hierarchies();
                 self.show_toast("Deleted selected skill");
@@ -569,53 +901,21 @@ impl SkillPreviewApp {
         }
     }
 
-    fn open_delete_confirm_dialog(&mut self) {
-        let Some((_, _, skill_name)) = self.selected_skill_identity() else {
-            self.show_toast("Select a skill file to delete");
-            return;
-        };
-
-        self.delete_confirm_dialog = Some(DeleteConfirmDialogState {
-            selected_button: 1,
-            skill_name,
-        });
-    }
-
-    fn handle_delete_confirm_key(
-        &mut self,
-        key_code: KeyCode,
-        _modifiers: crossterm::event::KeyModifiers,
-    ) -> bool {
-        let Some(state) = self.delete_confirm_dialog.as_mut() else {
-            return false;
-        };
-
-        match key_code {
-            KeyCode::Left | KeyCode::Char('h') => {
-                state.selected_button = state.selected_button.saturating_sub(1)
-            }
-            KeyCode::Right | KeyCode::Char('l') | KeyCode::Tab => {
-                state.selected_button = (state.selected_button + 1).min(1)
-            }
-            KeyCode::Esc => self.delete_confirm_dialog = None,
-            KeyCode::Char('d') => {
-                self.delete_confirm_dialog = None;
-                self.delete_selected_skill();
-            }
-            KeyCode::Enter => {
-                let choice = state.selected_button;
-                self.delete_confirm_dialog = None;
-                if choice == 0 {
-                    self.show_toast("Press d again to delete selected skill");
+    fn update_selected_skill(&mut self) {
+        if let Some(favorite) = self.selected_favorite_entry() {
+            let slug = Self::favorite_install_target(&favorite);
+            match run_configured_skills_command(&self.app_config.skills_command, &["add", &slug]) {
+                Ok(_) => {
+                    self.refresh_skill_hierarchies();
+                    self.show_toast(format!("Installed {}", slug));
+                }
+                Err(err) => {
+                    self.show_toast(format!("Install failed: {}", err));
                 }
             }
-            _ => {}
+            return;
         }
 
-        true
-    }
-
-    fn update_selected_skill(&mut self) {
         let Some((_, _, skill_name)) = self.selected_skill_identity() else {
             self.show_toast("Select a skill file to update");
             return;
@@ -637,34 +937,6 @@ impl SkillPreviewApp {
         }
     }
 
-    fn build_widget(source: SourceState, show_toc: bool) -> MarkdownWidget<'static> {
-        let markdown_content = source.content().unwrap_or_default().to_owned();
-
-        let mut scroll = ScrollState::default();
-        scroll.update_total_lines(markdown_content.lines().count().max(1));
-
-        let mut display = DisplaySettings::default();
-        let _ = display.set_show_document_line_numbers(true);
-
-        MarkdownWidget::new(
-            markdown_content,
-            scroll,
-            source,
-            CacheState::default(),
-            display,
-            CollapseState::default(),
-            ExpandableState::default(),
-            GitStatsState::default(),
-            VimState::default(),
-            SelectionState::default(),
-            DoubleClickState::default(),
-        )
-        .with_has_pane(false)
-        .show_toc(show_toc)
-        .show_scrollbar(true)
-        .show_statusline(true)
-    }
-
     fn new(
         app_config: AppConfig,
         startup_dialog: Option<StartupDialogState>,
@@ -673,60 +945,71 @@ impl SkillPreviewApp {
         project_skills_nodes: Vec<SkillTreeNode>,
         global_skills_nodes: Vec<SkillTreeNode>,
     ) -> Self {
-        let show_toc = true;
-        let widget = Self::build_widget(source, show_toc);
-        let preview_title = extract_skill_name_from_frontmatter(&source_path)
-            .unwrap_or_else(|| fallback_title_from_path(&source_path));
+        let user_config = load_user_config().unwrap_or_else(|_| UserConfig::default());
+        let show_toc = false;
+        let mut preview = preview_logic::new_preview_state(source_path, source, show_toc);
+        preview.show_markdown_pane = user_config.ui.show_markdown_pane;
 
-        let mut skills_expanded = HashSet::new();
+        let mut skills_expanded = ExpandedSkillPaths::new();
         collect_expanded_skill_paths(&project_skills_nodes, &mut Vec::new(), &mut skills_expanded);
 
-        let mut grid_layout = ResizableGrid::new(0);
-        let preview_pane_id = grid_layout.split_pane_vertically(0).unwrap_or(0);
-        let _ = grid_layout.resize_divider(0, 50);
+        let mut detail = DetailState::new();
+        detail.show_detail_pane = user_config.ui.show_detail_pane;
 
         let mut app = Self {
             app_config,
             startup_dialog,
-            widget,
+            preview,
             menu: Self::build_menu(),
             project_skills_nodes,
             global_skills_nodes,
-            favorite_skills_nodes: Vec::new(),
-            skills_selected_path: Some(vec![0]),
+            favorites: FavoritesState::new(user_config.favorites),
+            skills_selected_path: None,
             skills_expanded,
             skills_offset: 0,
-            source_path,
-            preview_title,
-            show_toc,
             current_view: AppView::Project,
             focus: FocusPane::Tree,
-            grid_layout,
-            grid_state: ResizableGridWidgetState::default(),
             navbar_area: Rect::default(),
             grid_area: Rect::default(),
-            tree_pane_id: 0,
-            preview_pane_id,
             tree_area: Rect::default(),
             tree_content_area: Rect::default(),
             markdown_area: Rect::default(),
+            detail_area: Rect::default(),
             markdown_inner_area: Rect::default(),
             last_move_processed: Instant::now(),
             toast_message: None,
             toast_expires_at: None,
             show_hotkeys_modal: false,
             delete_confirm_dialog: None,
-            pending_preview_path: None,
-            pending_preview_since: None,
+            install_modal: None,
+            agent_picker_modal: None,
+            pending_startup_agent_picker: false,
+            detail,
             search: SearchState::new(),
-            config_selected_field: 0,
-            config_value_cursor: 0,
-            config_status: "Edit values. Ctrl+S to save.".to_string(),
-            config_dirty: false,
+            config: ConfigState::new(),
         };
 
+        app.pending_startup_agent_picker = app.app_config.skills_command.default_agents.is_empty();
+
         app.rebuild_favorites_nodes();
+        app.reset_selection_to_first_skill();
         app.open_selected_file_immediate();
+        if app.detail.show_detail_pane
+            && matches!(
+                app.current_view,
+                AppView::Project | AppView::Global | AppView::Favorites
+            )
+        {
+            let slug = app.selected_skill_identity().and_then(|(_, favorite, _)| {
+                detail_logic::selected_project_global_slug(&favorite)
+                    .or_else(|| app.resolve_global_slug_via_search(&favorite))
+            });
+            let _ = detail_logic::fetch_project_global_detail_now(
+                &mut app.detail,
+                app.search.search_client.as_ref(),
+                slug.as_deref(),
+            );
+        }
         app
     }
 
@@ -746,70 +1029,80 @@ impl SkillPreviewApp {
         false
     }
 
-    fn handle_grid_mouse(&mut self, mouse: MouseEvent) {
-        let crossterm_mouse = CrosstermMouseEvent {
-            kind: mouse.kind,
-            column: mouse.column,
-            row: mouse.row,
-            modifiers: mouse.modifiers,
-        };
-
-        let mut widget =
-            ResizableGridWidget::new(self.grid_layout.clone()).with_state(self.grid_state);
-        widget.handle_mouse(crossterm_mouse, self.grid_area);
-        self.grid_state = widget.state();
-        self.grid_layout = widget.layout().clone();
-    }
-
     fn update_pane_areas_from_grid(&mut self) {
-        let panes = self.grid_layout.get_panes(self.grid_area);
-        if let Some(pane) = panes.iter().find(|pane| pane.id == self.tree_pane_id) {
-            self.tree_area = pane.area;
+        self.tree_area = Rect::default();
+        self.markdown_area = Rect::default();
+        self.detail_area = Rect::default();
+
+        if self.current_view == AppView::Search {
+            let cols = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(80), Constraint::Percentage(20)])
+                .split(self.grid_area);
+            self.tree_area = cols[0];
+            self.markdown_area = cols[1];
+            return;
         }
-        if let Some(pane) = panes.iter().find(|pane| pane.id == self.preview_pane_id) {
-            self.markdown_area = pane.area;
+
+        if self.current_view == AppView::Config {
+            return;
+        }
+
+        let show_detail = self.detail.show_detail_pane
+            && matches!(
+                self.current_view,
+                AppView::Project | AppView::Global | AppView::Favorites
+            );
+        let show_markdown = self.preview.show_markdown_pane;
+
+        match (show_markdown, show_detail) {
+            (true, true) => {
+                let cols = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(60),
+                        Constraint::Percentage(20),
+                    ])
+                    .split(self.grid_area);
+                self.tree_area = cols[0];
+                self.markdown_area = cols[1];
+                self.detail_area = cols[2];
+            }
+            (true, false) => {
+                let cols = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(20), Constraint::Percentage(80)])
+                    .split(self.grid_area);
+                self.tree_area = cols[0];
+                self.markdown_area = cols[1];
+            }
+            (false, true) => {
+                let cols = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(self.grid_area);
+                self.tree_area = cols[0];
+                self.detail_area = cols[1];
+            }
+            (false, false) => {
+                self.tree_area = self.grid_area;
+            }
         }
     }
 
     fn queue_open_selected_file(&mut self) {
-        let selected_path = {
-            let Some(node) = self.selected_skill_node() else {
-                return;
-            };
-            let Some(path) = &node.skill_file else {
-                return;
-            };
-            path.clone()
-        };
-
-        if selected_path == self.source_path {
-            return;
-        }
-
-        if let Ok(source) = load_source_from_path(&selected_path) {
-            self.source_path = selected_path;
-            self.preview_title = extract_skill_name_from_frontmatter(&self.source_path)
-                .unwrap_or_else(|| fallback_title_from_path(&self.source_path));
-            self.widget = Self::build_widget(source, self.show_toc);
-        }
+        let selected_path = self
+            .selected_skill_node()
+            .and_then(|node| node.skill_file.as_ref().cloned());
+        preview_logic::queue_open_selected_file(&mut self.preview, selected_path);
     }
 
     fn open_selected_file_immediate(&mut self) {
-        let Some(node) = self.selected_skill_node() else {
-            return;
-        };
-        let Some(path) = &node.skill_file else {
-            return;
-        };
-        if *path == self.source_path {
-            return;
-        }
-        if let Ok(source) = load_source_from_path(path) {
-            self.source_path = path.clone();
-            self.preview_title = extract_skill_name_from_frontmatter(&self.source_path)
-                .unwrap_or_else(|| fallback_title_from_path(&self.source_path));
-            self.widget = Self::build_widget(source, self.show_toc);
-        }
+        let selected_path = self
+            .selected_skill_node()
+            .and_then(|node| node.skill_file.as_ref().cloned());
+        preview_logic::open_selected_file_immediate(&mut self.preview, selected_path);
     }
 
     fn selected_skill_node(&self) -> Option<&SkillTreeNode> {
@@ -824,121 +1117,93 @@ impl SkillPreviewApp {
         current
     }
 
-    fn collect_visible_skill_paths(
-        nodes: &[SkillTreeNode],
-        expanded: &HashSet<Vec<usize>>,
-        base: &mut Vec<usize>,
-        out: &mut Vec<Vec<usize>>,
-    ) {
-        for (idx, node) in nodes.iter().enumerate() {
-            base.push(idx);
-            let path = base.clone();
-            out.push(path.clone());
-            if expanded.contains(&path) {
-                Self::collect_visible_skill_paths(&node.children, expanded, base, out);
-            }
-            let _ = base.pop();
-        }
-    }
-
-    fn visible_skill_paths(&self) -> Vec<Vec<usize>> {
-        let mut out = Vec::new();
-        Self::collect_visible_skill_paths(
-            self.active_skills_nodes(),
-            &self.skills_expanded,
-            &mut Vec::new(),
-            &mut out,
-        );
-        out
+    fn visible_skill_paths(&self) -> Vec<SkillPath> {
+        tree_nav_logic::visible_skill_paths(self.active_skills_nodes(), &self.skills_expanded)
     }
 
     fn ensure_skill_selection_visible(&mut self) {
-        let visible = self.visible_skill_paths();
-        if visible.is_empty() {
-            self.skills_selected_path = None;
-            self.skills_offset = 0;
-            return;
-        }
-        let valid = self
-            .skills_selected_path
-            .as_ref()
-            .map(|p| visible.iter().any(|v| v == p))
-            .unwrap_or(false);
-        if !valid {
-            self.skills_selected_path = Some(visible[0].clone());
-        }
+        let active_nodes = match self.current_view {
+            AppView::Project | AppView::Search | AppView::Config => &self.project_skills_nodes,
+            AppView::Global => &self.global_skills_nodes,
+            AppView::Favorites => &self.favorites.nodes,
+        };
+        tree_nav_logic::ensure_skill_selection_visible(
+            active_nodes,
+            &self.skills_expanded,
+            &mut self.skills_selected_path,
+            &mut self.skills_offset,
+        );
     }
 
     fn select_next_skill(&mut self) {
-        let visible = self.visible_skill_paths();
-        if visible.is_empty() {
-            return;
-        }
-        let current = self
-            .skills_selected_path
-            .as_ref()
-            .and_then(|p| visible.iter().position(|v| v == p))
-            .unwrap_or(0);
-        let next = (current + 1).min(visible.len().saturating_sub(1));
-        self.skills_selected_path = Some(visible[next].clone());
+        let active_nodes = match self.current_view {
+            AppView::Project | AppView::Search | AppView::Config => &self.project_skills_nodes,
+            AppView::Global => &self.global_skills_nodes,
+            AppView::Favorites => &self.favorites.nodes,
+        };
+        tree_nav_logic::select_next_skill(
+            active_nodes,
+            &self.skills_expanded,
+            &mut self.skills_selected_path,
+        );
     }
 
     fn select_prev_skill(&mut self) {
-        let visible = self.visible_skill_paths();
-        if visible.is_empty() {
-            return;
-        }
-        let current = self
-            .skills_selected_path
-            .as_ref()
-            .and_then(|p| visible.iter().position(|v| v == p))
-            .unwrap_or(0);
-        let prev = current.saturating_sub(1);
-        self.skills_selected_path = Some(visible[prev].clone());
+        let active_nodes = match self.current_view {
+            AppView::Project | AppView::Search | AppView::Config => &self.project_skills_nodes,
+            AppView::Global => &self.global_skills_nodes,
+            AppView::Favorites => &self.favorites.nodes,
+        };
+        tree_nav_logic::select_prev_skill(
+            active_nodes,
+            &self.skills_expanded,
+            &mut self.skills_selected_path,
+        );
     }
 
     fn expand_selected_skill(&mut self) {
-        if let Some(path) = self.skills_selected_path.clone() {
-            self.skills_expanded.insert(path);
-        }
+        tree_nav_logic::expand_selected_skill(
+            &self.skills_selected_path,
+            &mut self.skills_expanded,
+        );
     }
 
     fn collapse_selected_skill(&mut self) {
-        if let Some(path) = self.skills_selected_path.clone() {
-            if self.skills_expanded.contains(&path) {
-                self.skills_expanded.remove(&path);
-            } else if path.len() > 1 {
-                let mut parent = path;
-                parent.pop();
-                self.skills_selected_path = Some(parent);
-            }
-        }
+        tree_nav_logic::collapse_selected_skill(
+            &mut self.skills_selected_path,
+            &mut self.skills_expanded,
+        );
     }
 
     fn flush_pending_preview_if_ready(&mut self) -> bool {
-        const PREVIEW_DEBOUNCE_MS: u64 = 200;
+        preview_logic::flush_pending_preview_if_ready(&mut self.preview)
+    }
 
-        let Some(pending_since) = self.pending_preview_since else {
-            return false;
+    fn select_skill_by_visible_row(&mut self, row_index: usize) {
+        let selected_before = self.skills_selected_path.clone();
+        let active_nodes = match self.current_view {
+            AppView::Project | AppView::Search | AppView::Config => &self.project_skills_nodes,
+            AppView::Global => &self.global_skills_nodes,
+            AppView::Favorites => &self.favorites.nodes,
         };
-        if pending_since.elapsed() < Duration::from_millis(PREVIEW_DEBOUNCE_MS) {
-            return false;
+        tree_nav_logic::select_skill_by_visible_row(
+            active_nodes,
+            &self.skills_expanded,
+            &mut self.skills_selected_path,
+            &mut self.skills_offset,
+            row_index,
+        );
+        if self.skills_selected_path != selected_before {
+            self.queue_open_selected_file();
+            if self.detail.show_detail_pane
+                && matches!(
+                    self.current_view,
+                    AppView::Project | AppView::Global | AppView::Favorites
+                )
+            {
+                self.queue_project_global_detail_refresh();
+            }
         }
-
-        let Some(selected_path) = self.pending_preview_path.take() else {
-            self.pending_preview_since = None;
-            return false;
-        };
-        self.pending_preview_since = None;
-
-        if let Ok(source) = load_source_from_path(&selected_path) {
-            self.source_path = selected_path;
-            self.preview_title = extract_skill_name_from_frontmatter(&self.source_path)
-                .unwrap_or_else(|| fallback_title_from_path(&self.source_path));
-            self.widget = Self::build_widget(source, self.show_toc);
-            return true;
-        }
-        false
     }
 
     fn is_in_rect(rect: Rect, x: u16, y: u16) -> bool {
@@ -946,112 +1211,6 @@ impl SkillPreviewApp {
             && y >= rect.y
             && x < rect.x.saturating_add(rect.width)
             && y < rect.y.saturating_add(rect.height)
-    }
-
-    fn apply_translucent_shadow(frame: &mut Frame<'_>, area: Rect) {
-        if area.width == 0 || area.height == 0 {
-            return;
-        }
-
-        let bounds = frame.area();
-        let start_x = area.x.max(bounds.x);
-        let start_y = area.y.max(bounds.y);
-        let end_x = area
-            .x
-            .saturating_add(area.width)
-            .min(bounds.x.saturating_add(bounds.width));
-        let end_y = area
-            .y
-            .saturating_add(area.height)
-            .min(bounds.y.saturating_add(bounds.height));
-        if start_x >= end_x || start_y >= end_y {
-            return;
-        }
-
-        let buf = frame.buffer_mut();
-        for y in start_y..end_y {
-            for x in start_x..end_x {
-                if let Some(cell) = buf.cell_mut((x, y)) {
-                    cell.set_style(Style::default().bg(Color::Black).fg(Color::Black));
-                }
-            }
-        }
-    }
-
-    fn startup_choice_message() -> &'static str {
-        "Global 'skills' could not be verified as the expected skills CLI.\n\nChoose how this project should run skills commands."
-    }
-
-    fn apply_startup_choice(&mut self, selected_button: usize) {
-        if selected_button == 0 {
-            if let Err(message) = install_global_skills_cli() {
-                self.startup_dialog = Some(StartupDialogState::ChooseCommand {
-                    selected_button,
-                    error_message: Some(message),
-                });
-                return;
-            }
-
-            self.app_config.skills_command.mode = SkillsCommandMode::Global;
-            let verified_version = verify_global_skills_command(&self.app_config.skills_command);
-            self.app_config.skills_command.global_command_verified = verified_version.is_some();
-            self.app_config.skills_command.global_command_version = verified_version;
-        } else {
-            self.app_config.skills_command.mode = SkillsCommandMode::Npx;
-            self.app_config.skills_command.global_command_verified = false;
-            self.app_config.skills_command.global_command_version = None;
-        }
-
-        if let Err(err) = persist_app_config(&self.app_config) {
-            self.show_toast(format!("Failed to save config: {}", err));
-            return;
-        }
-
-        self.startup_dialog = None;
-    }
-
-    fn handle_startup_dialog_key(
-        &mut self,
-        key_code: KeyCode,
-        _modifiers: crossterm::event::KeyModifiers,
-    ) -> bool {
-        let mut close_dialog = false;
-        let mut pending_choice: Option<usize> = None;
-
-        if let Some(state) = self.startup_dialog.as_mut() {
-            match state {
-                StartupDialogState::Info { .. } => {
-                    if matches!(key_code, KeyCode::Enter | KeyCode::Esc) {
-                        close_dialog = true;
-                    }
-                }
-                StartupDialogState::ChooseCommand {
-                    selected_button,
-                    error_message,
-                } => match key_code {
-                    KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('1') => {
-                        *selected_button = selected_button.saturating_sub(1);
-                        *error_message = None;
-                    }
-                    KeyCode::Down | KeyCode::Char('j') | KeyCode::Tab | KeyCode::Char('2') => {
-                        *selected_button = (*selected_button + 1).min(1);
-                        *error_message = None;
-                    }
-                    KeyCode::Enter => pending_choice = Some(*selected_button),
-                    _ => {}
-                },
-            }
-        }
-
-        if close_dialog {
-            self.startup_dialog = None;
-        }
-
-        if let Some(choice) = pending_choice {
-            self.apply_startup_choice(choice);
-        }
-
-        true
     }
 }
 
@@ -1071,30 +1230,139 @@ impl CoordinatorApp for SkillPreviewApp {
                     {
                         return Ok(CoordinatorAction::Quit);
                     }
-                    if self.handle_startup_dialog_key(key.key_code, key.modifiers) {
+                    let mut toast_message: Option<String> = None;
+                    if startup_dialog_logic::handle_startup_dialog_key(
+                        &mut self.startup_dialog,
+                        &mut self.app_config,
+                        key.key_code,
+                        key.modifiers,
+                        |message| toast_message = Some(message),
+                    ) {
+                        if let Some(message) = toast_message {
+                            self.show_toast(message);
+                        }
                         return Ok(CoordinatorAction::Redraw);
                     }
                 }
 
                 if self.delete_confirm_dialog.is_some() {
-                    if self.handle_delete_confirm_key(key.key_code, key.modifiers) {
+                    if let Some(intent) = delete_confirm_logic::handle_delete_confirm_key(
+                        &mut self.delete_confirm_dialog,
+                        key.key_code,
+                    ) {
+                        if matches!(
+                            intent,
+                            delete_confirm_logic::DeleteConfirmIntent::ConfirmDelete
+                        ) {
+                            self.delete_selected_skill();
+                        }
                         return Ok(CoordinatorAction::Redraw);
                     }
                 }
 
-                if key.key_code == KeyCode::Char('q') && self.current_view != AppView::Search {
+                if let Some(modal) = self.install_modal.as_ref() {
+                    if let InstallModalPhase::Finished { .. } = modal.phase {
+                        if matches!(
+                            key.key_code,
+                            KeyCode::Enter | KeyCode::Esc | KeyCode::Char('c')
+                        ) {
+                            self.install_modal = None;
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                    }
+                    return Ok(CoordinatorAction::Continue);
+                }
+
+                if let Some(modal) = self.agent_picker_modal.as_mut() {
+                    let filtered = Self::filtered_agent_keys(&modal.query);
+                    let save_row_index = filtered.len();
+                    if modal.selected_index > save_row_index {
+                        modal.selected_index = save_row_index;
+                    }
+
+                    match key.key_code {
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            modal.selected_index = modal.selected_index.saturating_sub(1);
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            modal.selected_index = (modal.selected_index + 1).min(save_row_index);
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Backspace => {
+                            modal.query.pop();
+                            modal.selected_index = 0;
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Esc => {
+                            if !modal.required_on_startup {
+                                self.agent_picker_modal = None;
+                            }
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Char(' ') => {
+                            if modal.selected_index < filtered.len() {
+                                let key_name = filtered[modal.selected_index].to_string();
+                                if let Some(pos) = modal
+                                    .selected_agents
+                                    .iter()
+                                    .position(|item| item == &key_name)
+                                {
+                                    modal.selected_agents.remove(pos);
+                                } else {
+                                    modal.selected_agents.push(key_name);
+                                }
+                                modal.selected_agents.sort();
+                                modal.selected_agents.dedup();
+                            }
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Enter => {
+                            self.save_agent_picker_selection();
+                            self.agent_picker_modal = None;
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Char(ch)
+                            if !key
+                                .modifiers
+                                .intersects(crossterm::event::KeyModifiers::CONTROL)
+                                && !key
+                                    .modifiers
+                                    .intersects(crossterm::event::KeyModifiers::ALT) =>
+                        {
+                            modal.query.push(ch);
+                            modal.selected_index = 0;
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Char('s')
+                            if key
+                                .modifiers
+                                .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                        {
+                            self.save_agent_picker_selection();
+                            self.agent_picker_modal = None;
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        _ => return Ok(CoordinatorAction::Continue),
+                    }
+                }
+
+                let search_input_blocks_global =
+                    self.current_view == AppView::Search && self.search.input_focused;
+
+                if key.key_code == KeyCode::Char('q') && !search_input_blocks_global {
                     return Ok(CoordinatorAction::Quit);
                 }
 
                 if key.key_code == KeyCode::Esc
                     && self.show_hotkeys_modal
-                    && self.current_view != AppView::Search
+                    && !search_input_blocks_global
                 {
                     self.show_hotkeys_modal = false;
                     return Ok(CoordinatorAction::Redraw);
                 }
 
-                if key.key_code == KeyCode::Char('?') && self.current_view != AppView::Search {
+                if key.key_code == KeyCode::Char('?') && !search_input_blocks_global {
                     self.show_hotkeys_modal = !self.show_hotkeys_modal;
                     return Ok(CoordinatorAction::Redraw);
                 }
@@ -1105,32 +1373,32 @@ impl CoordinatorApp for SkillPreviewApp {
 
                 if key.key_code == KeyCode::Char('/') && self.current_view != AppView::Search {
                     self.set_view(AppView::Search);
-                    self.search.search_status =
-                        "Global search mode (/api/search). Type to query skills.sh".to_string();
+                    self.search.input_focused = true;
+                    self.search.search_status = "Search input focused".to_string();
                     return Ok(CoordinatorAction::Redraw);
                 }
 
-                if key.key_code == KeyCode::Char('1') && self.current_view != AppView::Search {
+                if key.key_code == KeyCode::Char('1') && !search_input_blocks_global {
                     self.set_view(AppView::Project);
                     return Ok(CoordinatorAction::Redraw);
                 }
 
-                if key.key_code == KeyCode::Char('2') && self.current_view != AppView::Search {
+                if key.key_code == KeyCode::Char('2') && !search_input_blocks_global {
                     self.set_view(AppView::Global);
                     return Ok(CoordinatorAction::Redraw);
                 }
 
-                if key.key_code == KeyCode::Char('3') && self.current_view != AppView::Search {
+                if key.key_code == KeyCode::Char('3') && !search_input_blocks_global {
                     self.set_view(AppView::Search);
                     return Ok(CoordinatorAction::Redraw);
                 }
 
-                if key.key_code == KeyCode::Char('4') && self.current_view != AppView::Search {
+                if key.key_code == KeyCode::Char('4') && !search_input_blocks_global {
                     self.set_view(AppView::Favorites);
                     return Ok(CoordinatorAction::Redraw);
                 }
 
-                if key.key_code == KeyCode::Char('5') && self.current_view != AppView::Search {
+                if key.key_code == KeyCode::Char('5') && !search_input_blocks_global {
                     self.set_view(AppView::Config);
                     return Ok(CoordinatorAction::Redraw);
                 }
@@ -1146,24 +1414,48 @@ impl CoordinatorApp for SkillPreviewApp {
 
                     match key.key_code {
                         KeyCode::Char('/') => {
-                            self.search.search_status =
-                                "Global search mode (/api/search). Type to query skills.sh"
-                                    .to_string();
+                            self.search.input_focused = true;
+                            self.search.search_status = "Search input focused".to_string();
                             return Ok(CoordinatorAction::Redraw);
                         }
                         KeyCode::Esc => {
-                            if !self.search.search_query.is_empty() {
-                                self.search.search_query.clear();
-                                self.queue_search_refresh();
-                            }
+                            self.search.input_focused = false;
+                            self.search.search_status =
+                                "Search input unfocused. Press / to focus input".to_string();
                             return Ok(CoordinatorAction::Redraw);
                         }
-                        KeyCode::Backspace => {
+                        KeyCode::Backspace if self.search.input_focused => {
                             if !self.search.search_query.is_empty() {
                                 self.search.search_query.pop();
                                 self.queue_search_refresh();
                                 return Ok(CoordinatorAction::Redraw);
                             }
+                        }
+                        KeyCode::Char('w')
+                            if self.search.input_focused
+                                && key
+                                    .modifiers
+                                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                        {
+                            let trimmed_len = self.search.search_query.trim_end().len();
+                            self.search.search_query.truncate(trimmed_len);
+                            if let Some(pos) = self.search.search_query.rfind(char::is_whitespace) {
+                                self.search.search_query.truncate(pos + 1);
+                            } else {
+                                self.search.search_query.clear();
+                            }
+                            self.queue_search_refresh();
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Char('u')
+                            if self.search.input_focused
+                                && key
+                                    .modifiers
+                                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
+                        {
+                            self.search.search_query.clear();
+                            self.queue_search_refresh();
+                            return Ok(CoordinatorAction::Redraw);
                         }
                         KeyCode::Char('r')
                             if key
@@ -1173,30 +1465,65 @@ impl CoordinatorApp for SkillPreviewApp {
                             self.refresh_search_results();
                             return Ok(CoordinatorAction::Redraw);
                         }
-                        KeyCode::Up | KeyCode::Char('k') => {
+                        KeyCode::Up | KeyCode::Char('k') if !self.search.input_focused => {
                             if self.search.search_selected > 0 {
                                 self.search.search_selected -= 1;
                                 self.queue_selected_search_detail();
                             }
                             return Ok(CoordinatorAction::Redraw);
                         }
-                        KeyCode::Down | KeyCode::Char('j') => {
+                        KeyCode::Down | KeyCode::Char('j') if !self.search.input_focused => {
                             if self.search.search_selected + 1 < self.search.search_results.len() {
                                 self.search.search_selected += 1;
                                 self.queue_selected_search_detail();
                             }
                             return Ok(CoordinatorAction::Redraw);
                         }
-                        KeyCode::Enter => {
-                            self.queue_selected_search_detail();
+                        KeyCode::Enter if !self.search.input_focused => {
+                            let slug = match self.selected_search_slug() {
+                                Ok(slug) => slug,
+                                Err(message) => {
+                                    self.search.search_status = message;
+                                    return Ok(CoordinatorAction::Redraw);
+                                }
+                            };
+                            if self.is_search_skill_installed(&slug) {
+                                if !self.open_installed_search_preview(&slug) {
+                                    self.search.search_status =
+                                        "Installed skill preview unavailable".to_string();
+                                }
+                            } else {
+                                self.install_selected_search_skill();
+                            }
                             return Ok(CoordinatorAction::Redraw);
                         }
-                        KeyCode::Char('i')
-                            if key
-                                .modifiers
-                                .contains(crossterm::event::KeyModifiers::CONTROL) =>
-                        {
+                        KeyCode::Char('f') if !self.search.input_focused => {
+                            self.toggle_selected_search_favorite();
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Char('i') if !self.search.input_focused => {
                             self.install_selected_search_skill();
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Char('u') if !self.search.input_focused => {
+                            self.update_selected_search_skill();
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Char('r') | KeyCode::Delete if !self.search.input_focused => {
+                            self.remove_selected_search_skill();
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        KeyCode::Char(ch)
+                            if self.search.input_focused
+                                && !key
+                                    .modifiers
+                                    .intersects(crossterm::event::KeyModifiers::CONTROL)
+                                && !key
+                                    .modifiers
+                                    .intersects(crossterm::event::KeyModifiers::ALT) =>
+                        {
+                            self.search.search_query.push(ch);
+                            self.queue_search_refresh();
                             return Ok(CoordinatorAction::Redraw);
                         }
                         KeyCode::Char(ch)
@@ -1207,9 +1534,8 @@ impl CoordinatorApp for SkillPreviewApp {
                                     .modifiers
                                     .intersects(crossterm::event::KeyModifiers::ALT) =>
                         {
-                            self.search.search_query.push(ch);
-                            self.queue_search_refresh();
-                            return Ok(CoordinatorAction::Redraw);
+                            let _ = ch;
+                            return Ok(CoordinatorAction::Continue);
                         }
                         _ => {
                             return Ok(CoordinatorAction::Continue);
@@ -1218,21 +1544,43 @@ impl CoordinatorApp for SkillPreviewApp {
                 }
 
                 if self.current_view == AppView::Config {
+                    if matches!(key.key_code, KeyCode::Enter) && self.config.selected_field == 2 {
+                        self.open_agent_picker_modal(false);
+                        return Ok(CoordinatorAction::Redraw);
+                    }
                     let key_event = CrosstermKeyEvent {
                         code: key.key_code,
                         modifiers: key.modifiers,
                         kind: key.kind,
                         state: KeyEventState::NONE,
                     };
-                    return Ok(self.handle_config_key(key_event));
+                    return Ok(config_logic::handle_config_key(
+                        &mut self.config,
+                        &mut self.app_config,
+                        key_event,
+                    ));
                 }
 
                 if key.key_code == KeyCode::Char(']') {
-                    self.show_toc = !self.show_toc;
-                    if let Ok(source) = load_source_from_path(&self.source_path) {
-                        self.widget = Self::build_widget(source, self.show_toc);
+                    if matches!(
+                        self.current_view,
+                        AppView::Project | AppView::Global | AppView::Favorites
+                    ) {
+                        self.toggle_project_global_detail_pane();
+                        return Ok(CoordinatorAction::Redraw);
                     }
-                    return Ok(CoordinatorAction::Redraw);
+                    return Ok(CoordinatorAction::Continue);
+                }
+
+                if key.key_code == KeyCode::Char('[') {
+                    if matches!(
+                        self.current_view,
+                        AppView::Project | AppView::Global | AppView::Favorites
+                    ) {
+                        self.toggle_project_global_markdown_pane();
+                        return Ok(CoordinatorAction::Redraw);
+                    }
+                    return Ok(CoordinatorAction::Continue);
                 }
 
                 if key.key_code == KeyCode::Tab {
@@ -1247,7 +1595,22 @@ impl CoordinatorApp for SkillPreviewApp {
                     self.ensure_skill_selection_visible();
                     let selected_before = self.skills_selected_path.clone();
                     match key.key_code {
-                        KeyCode::Delete | KeyCode::Char('d') => self.open_delete_confirm_dialog(),
+                        KeyCode::Delete | KeyCode::Char('d')
+                            if self.current_view != AppView::Favorites =>
+                        {
+                            let Some((_, _, skill_name)) = self.selected_skill_identity() else {
+                                self.show_toast("Select a skill file to delete");
+                                return Ok(CoordinatorAction::Redraw);
+                            };
+                            self.delete_confirm_dialog =
+                                Some(delete_confirm_logic::open_delete_confirm_dialog(skill_name));
+                        }
+                        KeyCode::Char('i') if self.current_view == AppView::Favorites => {
+                            self.install_selected_favorite()
+                        }
+                        KeyCode::Char('I') if self.current_view == AppView::Favorites => {
+                            self.install_selected_favorite_global()
+                        }
                         KeyCode::Char('u') => self.update_selected_skill(),
                         KeyCode::Char('f') => self.toggle_selected_favorite(),
                         KeyCode::Down | KeyCode::Char('j') => self.select_next_skill(),
@@ -1259,6 +1622,14 @@ impl CoordinatorApp for SkillPreviewApp {
                     let selected_after = self.skills_selected_path.clone();
                     if selected_after != selected_before || key.key_code == KeyCode::Enter {
                         self.queue_open_selected_file();
+                        if self.detail.show_detail_pane
+                            && matches!(
+                                self.current_view,
+                                AppView::Project | AppView::Global | AppView::Favorites
+                            )
+                        {
+                            self.refresh_project_global_detail_now();
+                        }
                     }
                     return Ok(CoordinatorAction::Redraw);
                 }
@@ -1270,7 +1641,7 @@ impl CoordinatorApp for SkillPreviewApp {
                     state: KeyEventState::NONE,
                 };
 
-                let markdown_event = self.widget.handle_key(key_event);
+                let markdown_event = self.preview.widget.handle_key(key_event);
                 let copied_chars = match &markdown_event {
                     MarkdownEvent::Copied { text } => Some(text.chars().count()),
                     _ => None,
@@ -1297,6 +1668,14 @@ impl CoordinatorApp for SkillPreviewApp {
                     return Ok(CoordinatorAction::Continue);
                 }
 
+                if self.install_modal.is_some() {
+                    return Ok(CoordinatorAction::Continue);
+                }
+
+                if self.agent_picker_modal.is_some() {
+                    return Ok(CoordinatorAction::Continue);
+                }
+
                 if Self::is_in_rect(self.navbar_area, mouse.column, mouse.row) {
                     match mouse.kind {
                         MouseEventKind::Moved => self.menu.update_hover(mouse.column, mouse.row),
@@ -1318,12 +1697,7 @@ impl CoordinatorApp for SkillPreviewApp {
                 }
 
                 if self.current_view == AppView::Search {
-                    let was_grid_dragging = self.grid_layout.is_dragging();
-                    self.handle_grid_mouse(mouse);
                     self.update_pane_areas_from_grid();
-                    if was_grid_dragging || self.grid_layout.is_dragging() {
-                        return Ok(CoordinatorAction::Redraw);
-                    }
                     return Ok(CoordinatorAction::Continue);
                 }
 
@@ -1331,12 +1705,56 @@ impl CoordinatorApp for SkillPreviewApp {
                     return Ok(CoordinatorAction::Continue);
                 }
 
-                let was_grid_dragging = self.grid_layout.is_dragging();
-                self.handle_grid_mouse(mouse);
                 self.update_pane_areas_from_grid();
 
-                if was_grid_dragging || self.grid_layout.is_dragging() {
-                    return Ok(CoordinatorAction::Redraw);
+                if Self::is_in_rect(self.tree_content_area, mouse.column, mouse.row) {
+                    match mouse.kind {
+                        MouseEventKind::Down(MouseButton::Left) => {
+                            self.focus = FocusPane::Tree;
+                            let row_index =
+                                mouse.row.saturating_sub(self.tree_content_area.y) as usize;
+                            self.select_skill_by_visible_row(row_index);
+                            self.queue_open_selected_file();
+                            if self.detail.show_detail_pane
+                                && matches!(
+                                    self.current_view,
+                                    AppView::Project | AppView::Global | AppView::Favorites
+                                )
+                            {
+                                self.refresh_project_global_detail_now();
+                            }
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        MouseEventKind::ScrollDown => {
+                            self.focus = FocusPane::Tree;
+                            self.select_next_skill();
+                            self.queue_open_selected_file();
+                            if self.detail.show_detail_pane
+                                && matches!(
+                                    self.current_view,
+                                    AppView::Project | AppView::Global | AppView::Favorites
+                                )
+                            {
+                                self.refresh_project_global_detail_now();
+                            }
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        MouseEventKind::ScrollUp => {
+                            self.focus = FocusPane::Tree;
+                            self.select_prev_skill();
+                            self.queue_open_selected_file();
+                            if self.detail.show_detail_pane
+                                && matches!(
+                                    self.current_view,
+                                    AppView::Project | AppView::Global | AppView::Favorites
+                                )
+                            {
+                                self.refresh_project_global_detail_now();
+                            }
+                            return Ok(CoordinatorAction::Redraw);
+                        }
+                        _ => {}
+                    }
                 }
 
                 if !Self::is_in_rect(self.markdown_inner_area, mouse.column, mouse.row) {
@@ -1359,6 +1777,7 @@ impl CoordinatorApp for SkillPreviewApp {
                 };
 
                 let markdown_event = self
+                    .preview
                     .widget
                     .handle_mouse(mouse_event, self.markdown_inner_area);
                 let copied_chars = match &markdown_event {
@@ -1380,14 +1799,27 @@ impl CoordinatorApp for SkillPreviewApp {
                 }
             }
             CoordinatorEvent::Tick(_) => {
+                if self.pending_startup_agent_picker
+                    && self.startup_dialog.is_none()
+                    && self.agent_picker_modal.is_none()
+                {
+                    self.open_agent_picker_modal(true);
+                    return Ok(CoordinatorAction::Redraw);
+                }
+
                 let toast_changed = self.clear_expired_toast();
                 let preview_changed = self.flush_pending_preview_if_ready();
                 let search_refresh_changed = self.flush_pending_search_refresh_if_ready();
                 let search_detail_changed = self.flush_pending_search_detail_if_ready();
+                let project_global_detail_changed =
+                    self.flush_pending_project_global_detail_if_ready();
+                let install_modal_changed = self.poll_install_modal_progress();
                 if toast_changed
                     || preview_changed
                     || search_refresh_changed
                     || search_detail_changed
+                    || project_global_detail_changed
+                    || install_modal_changed
                 {
                     Ok(CoordinatorAction::Redraw)
                 } else {
@@ -1415,145 +1847,61 @@ impl CoordinatorApp for SkillPreviewApp {
 
         self.menu.render(frame, self.navbar_area);
 
-        let footer = HotkeyFooter::new(vec![
-            HotkeyItem::new("q", "quit"),
-            HotkeyItem::new(
-                "]",
-                if self.show_toc {
-                    "hide toc"
-                } else {
-                    "show toc"
-                },
-            ),
-            HotkeyItem::new("?", "hotkeys"),
-        ]);
+        let footer_items = if self.current_view == AppView::Search {
+            vec![
+                HotkeyItem::new("hjkl", "Nav"),
+                HotkeyItem::new("i", "install"),
+                HotkeyItem::new("f", "favorite"),
+                HotkeyItem::new("u", "update"),
+                HotkeyItem::new("?", "hotkeys"),
+                HotkeyItem::new("q", "quit"),
+            ]
+        } else {
+            let mut items = vec![HotkeyItem::new("q", "quit")];
+            if self.current_view == AppView::Project || self.current_view == AppView::Global {
+                items.push(HotkeyItem::new("hjkl", "Nav"));
+                items.push(HotkeyItem::new("d", "remove"));
+                items.push(HotkeyItem::new("f", "favorite"));
+                items.push(HotkeyItem::new("[ ]", "Toggle md/details"));
+            } else if self.current_view == AppView::Favorites {
+                items.push(HotkeyItem::new("hjkl", "Nav"));
+                items.push(HotkeyItem::new("i", "install local"));
+                items.push(HotkeyItem::new("I", "install global"));
+                items.push(HotkeyItem::new("f", "favorite"));
+                items.push(HotkeyItem::new("[ ]", "Toggle md/details"));
+            }
+            items.push(HotkeyItem::new("?", "hotkeys"));
+            items
+        };
+        let footer = HotkeyFooter::new(footer_items);
         footer.render(frame, footer_area);
 
         if self.current_view == AppView::Search {
-            let grid_widget =
-                ResizableGridWidget::new(self.grid_layout.clone()).with_state(self.grid_state);
-            self.grid_state = grid_widget.state();
-            self.grid_layout = grid_widget.layout().clone();
-            frame.render_widget(grid_widget, self.grid_area);
             self.update_pane_areas_from_grid();
 
-            let left_border = if self.focus == FocusPane::Tree {
-                Color::Blue
-            } else {
-                Color::White
-            };
-            let right_border = if self.focus == FocusPane::Preview {
-                Color::Blue
-            } else {
-                Color::White
-            };
+            let selected_installed = self
+                .selected_search_slug()
+                .ok()
+                .map(|slug| self.is_search_skill_installed(&slug))
+                .unwrap_or(false);
 
-            let left_pane = Pane::new("Search Skills")
-                .with_icon(TERMINAL_ICON)
-                .border_style(Style::default().fg(left_border));
-            let (left_inner, _) = left_pane.render_block(frame, self.tree_area);
-            let left_rows = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(2),
-                    Constraint::Length(1),
-                    Constraint::Min(0),
-                ])
-                .split(left_inner);
-
-            frame.render_widget(
-                Paragraph::new(format!("Query: {}", self.search.search_query))
-                    .style(Style::default().fg(Color::White)),
-                left_rows[0],
-            );
-            frame.render_widget(
-                Paragraph::new(self.search.search_status.clone())
-                    .style(Style::default().fg(Color::DarkGray)),
-                left_rows[1],
-            );
-
-            let items = self
-                .search
-                .search_results
-                .iter()
-                .map(|item| {
-                    let skill_id = item.skill_id.as_deref().unwrap_or("<missing>");
-                    let source = if item.source.is_empty() {
-                        "<unknown>"
-                    } else {
-                        &item.source
-                    };
-                    ListItem::new(format!(
-                        "{}  ({} installs)\n{}/{}",
-                        item.name, item.installs, source, skill_id
-                    ))
-                })
-                .collect::<Vec<_>>();
-
-            let list = List::new(items)
-                .highlight_symbol("▶ ")
-                .highlight_style(Style::default().fg(Color::Black).bg(YAZI_CYAN));
-            let mut list_state = ListState::default();
-            if !self.search.search_results.is_empty() {
-                list_state.select(Some(
-                    self.search
-                        .search_selected
-                        .min(self.search.search_results.len() - 1),
-                ));
-            }
-            frame.render_stateful_widget(list, left_rows[2], &mut list_state);
-
-            let right_pane = Pane::new("Skill Details")
-                .with_icon(TERMINAL_ICON)
-                .border_style(Style::default().fg(right_border));
-            let (right_inner, _) = right_pane.render_block(frame, self.markdown_area);
-
-            let mut detail_lines = Vec::new();
-            if let Some(detail) = &self.search.search_detail {
-                detail_lines.push(Line::from("WEEKLY INSTALLS"));
-                detail_lines.push(Line::from(detail.weekly_installs.clone()));
-                detail_lines.push(Line::from(""));
-                detail_lines.push(Line::from("REPOSITORY"));
-                detail_lines.push(Line::from(detail.repository.clone()));
-                detail_lines.push(Line::from(""));
-                detail_lines.push(Line::from("GITHUB STARS"));
-                detail_lines.push(Line::from(detail.github_stars.clone()));
-                detail_lines.push(Line::from(""));
-                detail_lines.push(Line::from("FIRST SEEN"));
-                detail_lines.push(Line::from(detail.first_seen.clone()));
-                detail_lines.push(Line::from(""));
-
-                if !detail.security_audits.is_empty() {
-                    detail_lines.push(Line::from("SECURITY AUDITS"));
-                    for audit in &detail.security_audits {
-                        detail_lines.push(Line::from(format!("{}  {}", audit.name, audit.status)));
-                    }
-                    detail_lines.push(Line::from(""));
-                }
-
-                detail_lines.push(Line::from("INSTALLED ON"));
-                for install in &detail.installed_on {
-                    detail_lines.push(Line::from(format!(
-                        "{}  {}",
-                        install.agent, install.installs
-                    )));
-                }
-            } else {
-                detail_lines.push(Line::from("Select a skill to load details."));
-                detail_lines.push(Line::from("Use Up/Down to navigate results."));
-                detail_lines.push(Line::from("Press Enter to refresh selected details."));
-            }
-
-            frame.render_widget(
-                Paragraph::new(detail_lines)
-                    .style(Style::default().fg(Color::White))
-                    .wrap(Wrap { trim: true }),
-                right_inner,
+            search_render::render_search_view(
+                frame,
+                self.tree_area,
+                self.markdown_area,
+                &mut self.search,
+                &self.favorites.entries,
+                &self.project_skills_nodes,
+                &self.global_skills_nodes,
+                self.focus == FocusPane::Tree,
+                self.focus == FocusPane::Preview,
+                TERMINAL_ICON,
+                selected_installed,
             );
         } else if self.current_view == AppView::Config {
             let pane = Pane::new("Config (.agents/skills-tui-config.json)")
                 .with_icon(TERMINAL_ICON)
-                .border_style(Style::default().fg(Color::White));
+                .border_style(Style::default().fg(UNFOCUSED_PANE_BORDER));
             let (inner, _) = pane.render_block(frame, self.grid_area);
 
             let layout = Layout::default()
@@ -1564,18 +1912,15 @@ impl CoordinatorApp for SkillPreviewApp {
             let status_area = layout[1];
 
             let mut items = Vec::new();
-            for i in 0..self.config_field_count() {
+            for i in 0..config_logic::config_field_count() {
                 let label = if i == 1 {
-                    match self.app_config.skills_command.mode {
-                        SkillsCommandMode::Global => "global_command",
-                        SkillsCommandMode::Npx => "npx_command",
-                    }
+                    config_logic::config_command_label(&self.app_config)
                 } else {
-                    Self::config_field_label(i)
+                    config_logic::config_field_label(i)
                 };
-                let raw_value = self.config_field_value(i);
-                let value = if i == self.config_selected_field {
-                    self.render_config_value_with_cursor(&raw_value)
+                let raw_value = config_logic::config_field_value(&self.app_config, i);
+                let value = if i == self.config.selected_field {
+                    config_logic::render_config_value_with_cursor(&self.config, &raw_value)
                 } else {
                     raw_value
                 };
@@ -1586,11 +1931,11 @@ impl CoordinatorApp for SkillPreviewApp {
                 .highlight_symbol("▶ ")
                 .highlight_style(Style::default().fg(Color::Black).bg(YAZI_CYAN));
             let mut list_state = ListState::default();
-            list_state.select(Some(self.config_selected_field));
+            list_state.select(Some(self.config.selected_field));
             frame.render_stateful_widget(list, list_area, &mut list_state);
 
-            let dirty_mark = if self.config_dirty { "*" } else { "" };
-            let status = format!("{}{}", self.config_status, dirty_mark);
+            let dirty_mark = if self.config.dirty { "*" } else { "" };
+            let status = format!("{}{}", self.config.status, dirty_mark);
             let status_rows = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Length(1), Constraint::Length(1)])
@@ -1607,12 +1952,6 @@ impl CoordinatorApp for SkillPreviewApp {
             ]);
             config_hotkeys.render(frame, status_rows[1]);
         } else {
-            let grid_widget =
-                ResizableGridWidget::new(self.grid_layout.clone()).with_state(self.grid_state);
-            self.grid_state = grid_widget.state();
-            self.grid_layout = grid_widget.layout().clone();
-            frame.render_widget(grid_widget, self.grid_area);
-
             self.update_pane_areas_from_grid();
             self.markdown_inner_area = Rect::default();
 
@@ -1620,7 +1959,7 @@ impl CoordinatorApp for SkillPreviewApp {
                 let tree_border = if self.focus == FocusPane::Tree {
                     Color::Blue
                 } else {
-                    Color::White
+                    UNFOCUSED_PANE_BORDER
                 };
                 let tree_title = if self.current_view == AppView::Global {
                     "Global Skills"
@@ -1635,9 +1974,26 @@ impl CoordinatorApp for SkillPreviewApp {
                 let (tree_inner, _) = tree_pane.render_block(frame, self.tree_area);
                 let tree_rows = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(1)])
+                    .constraints([Constraint::Min(0)])
                     .split(tree_inner);
-                self.tree_content_area = tree_rows[0];
+
+                let mut tree_list_area = tree_rows[0];
+                if self.current_view == AppView::Favorites {
+                    let sections = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints([Constraint::Length(1), Constraint::Min(0)])
+                        .split(tree_rows[0]);
+                    let mut header = format!("{:<30} {:<7} {:<6}", "Name", "Project", "Global");
+                    if sections[0].width > 0 {
+                        header = truncate_to_width(&header, sections[0].width as usize);
+                    }
+                    frame.render_widget(
+                        Paragraph::new(header).style(Style::default().fg(Color::DarkGray)),
+                        sections[0],
+                    );
+                    tree_list_area = sections[1];
+                }
+                self.tree_content_area = tree_list_area;
 
                 self.ensure_skill_selection_visible();
                 let visible = self.visible_skill_paths();
@@ -1663,55 +2019,150 @@ impl CoordinatorApp for SkillPreviewApp {
                             .as_ref()
                             .map(|p| p == path)
                             .unwrap_or(false);
-                        let is_expanded = self.skills_expanded.contains(path);
-                        let disclosure = if node.children.is_empty() {
-                            " "
-                        } else if is_expanded {
-                            "▾"
-                        } else {
-                            "▸"
-                        };
-                        let row_style = if is_selected {
+                        let is_favorite =
+                            self.current_view != AppView::Favorites && self.is_favorite_node(node);
+                        let _is_expanded = self.skills_expanded.contains(path);
+                        let row_style = if is_selected && is_favorite {
+                            Style::default().fg(Color::Black).bg(FAVORITE_ORANGE)
+                        } else if is_selected {
                             Style::default().fg(Color::Black).bg(YAZI_CYAN)
+                        } else if is_favorite {
+                            Style::default().fg(FAVORITE_ORANGE)
                         } else {
                             Style::default().fg(Color::White)
                         };
-                        let favorite_marker = if self.is_favorite_node(node) {
-                            "*"
+                        let favorite_marker = if self.current_view == AppView::Favorites {
+                            " "
+                        } else if is_favorite {
+                            "★"
                         } else {
                             " "
                         };
-                        let text = format!(
-                            "{}{} {} {} {}",
-                            indent, disclosure, favorite_marker, TERMINAL_ICON, node.display_name
-                        );
-                        let padded = if line_width > 0 {
-                            format!("{:<width$}", text, width = line_width)
+                        if self.current_view == AppView::Favorites {
+                            let project_installed = self
+                                .favorites
+                                .entries
+                                .iter()
+                                .find(|favorite| {
+                                    Self::favorite_matches_dir_name(favorite, &node.dir_name)
+                                })
+                                .map(|favorite| {
+                                    Self::skill_installed_in_nodes(
+                                        &self.project_skills_nodes,
+                                        favorite,
+                                    )
+                                })
+                                .unwrap_or(false);
+                            let global_installed = self
+                                .favorites
+                                .entries
+                                .iter()
+                                .find(|favorite| {
+                                    Self::favorite_matches_dir_name(favorite, &node.dir_name)
+                                })
+                                .map(|favorite| {
+                                    Self::skill_installed_in_nodes(
+                                        &self.global_skills_nodes,
+                                        favorite,
+                                    )
+                                })
+                                .unwrap_or(false);
+                            let name = truncate_to_width(&node.display_name, 30);
+
+                            let base_fg = if is_selected {
+                                Color::Black
+                            } else {
+                                Color::White
+                            };
+                            let base_style = if is_selected {
+                                Style::default().fg(base_fg).bg(YAZI_CYAN)
+                            } else {
+                                Style::default().fg(base_fg)
+                            };
+                            let project_style = if is_selected {
+                                Style::default()
+                                    .fg(if project_installed {
+                                        FAVORITE_ORANGE
+                                    } else {
+                                        base_fg
+                                    })
+                                    .bg(YAZI_CYAN)
+                            } else {
+                                Style::default().fg(if project_installed {
+                                    FAVORITE_ORANGE
+                                } else {
+                                    base_fg
+                                })
+                            };
+                            let global_style = if is_selected {
+                                Style::default()
+                                    .fg(if global_installed {
+                                        FAVORITE_ORANGE
+                                    } else {
+                                        base_fg
+                                    })
+                                    .bg(YAZI_CYAN)
+                            } else {
+                                Style::default().fg(if global_installed {
+                                    FAVORITE_ORANGE
+                                } else {
+                                    base_fg
+                                })
+                            };
+
+                            let mut spans = vec![
+                                Span::styled(format!("{:<30}", name), base_style),
+                                Span::styled(" ", base_style),
+                                Span::styled(
+                                    format!("{:<7}", if project_installed { "●" } else { "○" }),
+                                    project_style,
+                                ),
+                                Span::styled(" ", base_style),
+                                Span::styled(
+                                    format!("{:<6}", if global_installed { "●" } else { "○" }),
+                                    global_style,
+                                ),
+                            ];
+
+                            let fixed_len = 30 + 1 + 7 + 1 + 6;
+                            if line_width > fixed_len {
+                                spans.push(Span::styled(
+                                    " ".repeat(line_width - fixed_len),
+                                    base_style,
+                                ));
+                            }
+                            lines.push(Line::from(spans));
                         } else {
-                            text
-                        };
-                        lines.push(Line::from(Span::styled(padded, row_style)));
+                            let text = format!(
+                                "{}{} {} {}",
+                                indent, favorite_marker, TERMINAL_ICON, node.display_name
+                            );
+                            let padded = if line_width > 0 {
+                                format!("{:<width$}", text, width = line_width)
+                            } else {
+                                text
+                            };
+                            lines.push(Line::from(Span::styled(padded, row_style)));
+                        }
                     }
                 }
 
                 frame.render_widget(Paragraph::new(lines), self.tree_content_area);
-                frame.render_widget(
-                    Paragraph::new("d delete  f favorite  u update")
-                        .style(Style::default().fg(Color::DarkGray)),
-                    tree_rows[1],
-                );
             }
 
-            if self.markdown_area.width > 0 && self.markdown_area.height > 0 {
+            if self.preview.show_markdown_pane
+                && self.markdown_area.width > 0
+                && self.markdown_area.height > 0
+            {
                 let preview_border = if self.focus == FocusPane::Preview {
                     Color::Blue
                 } else {
-                    Color::White
+                    UNFOCUSED_PANE_BORDER
                 };
                 let preview_title = if self.focus == FocusPane::Preview {
-                    preview_relative_to_skills(&self.source_path)
+                    preview_relative_to_skills(&self.preview.source_path)
                 } else {
-                    self.preview_title.clone()
+                    self.preview.preview_title.clone()
                 };
                 let preview_pane = Pane::new(preview_title)
                     .with_icon(TERMINAL_ICON)
@@ -1719,8 +2170,29 @@ impl CoordinatorApp for SkillPreviewApp {
                 let (preview_inner, _) = preview_pane.render_block(frame, self.markdown_area);
                 self.markdown_inner_area = preview_inner;
                 if preview_inner.width > 0 && preview_inner.height > 0 {
-                    frame.render_widget(&mut self.widget, preview_inner);
+                    frame.render_widget(&mut self.preview.widget, preview_inner);
                 }
+            }
+
+            if self.detail.show_detail_pane
+                && self.detail_area.width > 0
+                && self.detail_area.height > 0
+                && matches!(
+                    self.current_view,
+                    AppView::Project | AppView::Global | AppView::Favorites
+                )
+            {
+                render_skill_detail_pane(
+                    frame,
+                    self.detail_area,
+                    TERMINAL_ICON,
+                    UNFOCUSED_PANE_BORDER,
+                    SkillDetailPaneData {
+                        detail: self.detail.project_global_detail.as_ref(),
+                        empty_line_1: "No detail for selected skill.",
+                        empty_line_2: "Select a skill under Project/Global.",
+                    },
+                );
             }
 
             if let Some(message) = &self.toast_message {
@@ -1762,7 +2234,8 @@ impl CoordinatorApp for SkillPreviewApp {
             let hotkeys = vec![
                 Line::from("Global"),
                 Line::from(" q           quit"),
-                Line::from(" ]           toggle toc"),
+                Line::from(" [           toggle markdown pane (Project/Global/Favorites)"),
+                Line::from(" ]           toggle detail pane (Project/Global/Favorites)"),
                 Line::from(" ? / esc     open/close hotkeys"),
                 Line::from(" 1 / 2 / 3 / 4 / 5 switch Project/Global/Search/Favorites/Config"),
                 Line::from(" d/delete    remove skill"),
@@ -1796,99 +2269,39 @@ impl CoordinatorApp for SkillPreviewApp {
                         .height_percent(0.38)
                         .border_color(focused_pane_border)
                         .overlay(true)
-                        .footer("Press Enter to continue");
+                        .content_padding(2, 1)
+                        .message_alignment(Alignment::Left)
+                        .wrap_mode(DialogWrap::WordTrim)
+                        .shadow(DialogShadow::Medium)
+                        .hide_footer();
                     frame.render_widget(DialogWidget::new(&mut dialog), root_area);
                 }
                 StartupDialogState::ChooseCommand {
                     selected_button,
                     error_message,
                 } => {
-                    let modal_width = root_area.width.saturating_mul(58) / 100;
-                    let modal_height = root_area.height.saturating_mul(34) / 100;
-                    let modal_area = Rect {
-                        x: root_area.x + (root_area.width.saturating_sub(modal_width)) / 2,
-                        y: root_area.y + (root_area.height.saturating_sub(modal_height)) / 2,
-                        width: modal_width,
-                        height: modal_height,
-                    };
-
-                    let right_shadow = Rect {
-                        x: modal_area.x.saturating_add(modal_area.width),
-                        y: modal_area.y.saturating_add(1),
-                        width: 1,
-                        height: modal_area.height.saturating_sub(1),
-                    };
-                    Self::apply_translucent_shadow(frame, right_shadow);
-
-                    let bottom_shadow = Rect {
-                        x: modal_area.x.saturating_add(1),
-                        y: modal_area.y.saturating_add(modal_area.height),
-                        width: modal_area.width.saturating_sub(1),
-                        height: 1,
-                    };
-                    Self::apply_translucent_shadow(frame, bottom_shadow);
-
-                    frame.render_widget(Clear, modal_area);
-
-                    let modal_pane = Pane::new("Configuration")
-                        .border_style(Style::default().fg(focused_pane_border));
-                    let (inner, _) = modal_pane.render_block(frame, modal_area);
-
-                    let inner_with_vpad = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Length(1),
-                            Constraint::Min(0),
-                            Constraint::Length(1),
-                        ])
-                        .split(inner);
-                    let inner_with_padding = Layout::default()
-                        .direction(Direction::Horizontal)
-                        .constraints([
-                            Constraint::Length(2),
-                            Constraint::Min(0),
-                            Constraint::Length(2),
-                        ])
-                        .split(inner_with_vpad[1]);
-                    let content_area = inner_with_padding[1];
-
-                    let rows = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Min(3),
-                            Constraint::Length(if error_message.is_some() { 3 } else { 0 }),
-                            Constraint::Length(1),
-                            Constraint::Length(2),
-                            Constraint::Min(0),
-                        ])
-                        .split(content_area);
-
-                    frame.render_widget(
-                        Paragraph::new(Self::startup_choice_message())
-                            .style(Style::default().fg(Color::White))
-                            .wrap(Wrap { trim: true }),
-                        rows[0],
-                    );
-
+                    let mut message = startup_dialog_logic::startup_choice_message().to_string();
                     if let Some(error_message) = error_message {
-                        frame.render_widget(
-                            Paragraph::new(error_message.as_str())
-                                .style(Style::default().fg(Color::LightRed))
-                                .wrap(Wrap { trim: true }),
-                            rows[1],
-                        );
+                        message.push_str("\n\n");
+                        message.push_str(error_message);
                     }
 
-                    let items = vec![
-                        ListItem::new("1) Install Global Skills"),
-                        ListItem::new("2) Use npx skills"),
-                    ];
-                    let list = List::new(items)
-                        .highlight_symbol("  ")
-                        .highlight_style(Style::default().fg(Color::Black).bg(YAZI_CYAN));
-                    let mut list_state = ListState::default();
-                    list_state.select(Some(*selected_button));
-                    frame.render_stateful_widget(list, rows[3], &mut list_state);
+                    let mut dialog = Dialog::warning("Configuration", &message)
+                        .buttons(vec!["Install Global Skills", "Use npx skills"])
+                        .default_selection(*selected_button)
+                        .actions_layout(DialogActionsLayout::Vertical)
+                        .actions_alignment(Alignment::Left)
+                        .width_percent(0.58)
+                        .height_percent(0.34)
+                        .border_color(focused_pane_border)
+                        .overlay(true)
+                        .content_padding(2, 1)
+                        .message_alignment(Alignment::Left)
+                        .wrap_mode(DialogWrap::WordTrim)
+                        .shadow(DialogShadow::Medium)
+                        .hide_footer();
+                    frame.render_widget(DialogWidget::new(&mut dialog), root_area);
+                    *selected_button = dialog.selected_button;
                 }
             }
         }
@@ -1899,258 +2312,149 @@ impl CoordinatorApp for SkillPreviewApp {
                 state.skill_name
             );
             let mut dialog = Dialog::confirm("Configuration", &message)
-                .buttons(vec!["Delete", "Cancel"])
-                .width_percent(0.52)
-                .height_percent(0.32)
+                .buttons(vec!["Yes", "No"])
+                .default_selection(state.selected_button)
+                .width_percent(0.50)
+                .height_percent(0.28)
                 .overlay(true)
-                .footer("Press d again to delete, Esc to cancel");
-            dialog.selected_button = state.selected_button;
+                .content_padding(2, 1)
+                .message_alignment(Alignment::Left)
+                .wrap_mode(DialogWrap::WordTrim)
+                .shadow(DialogShadow::Medium)
+                .hide_footer();
             frame.render_widget(DialogWidget::new(&mut dialog), root_area);
             state.selected_button = dialog.selected_button;
         }
-    }
-}
 
-fn load_source_from_path(path: impl AsRef<Path>) -> io::Result<SourceState> {
-    let path = path.as_ref();
-
-    let mut source = SourceState::default();
-    source.set_source_file(path)?;
-    Ok(source)
-}
-
-fn fallback_title_from_path(path: &Path) -> String {
-    path.file_stem()
-        .and_then(|name| name.to_str())
-        .unwrap_or("Preview")
-        .to_string()
-}
-
-fn preview_relative_to_skills(path: &Path) -> String {
-    let skills_root = PathBuf::from(ROOT_AGENTS_PATH).join("skills");
-    if let Ok(relative) = path.strip_prefix(&skills_root) {
-        return relative.display().to_string();
-    }
-    if let Ok(relative) = path.strip_prefix(PathBuf::from(ROOT_AGENTS_PATH)) {
-        return relative.display().to_string();
-    }
-    let global_agents_root = global_agents_skill_root();
-    if let Ok(relative) = path.strip_prefix(&global_agents_root) {
-        return relative.display().to_string();
-    }
-    for (provider, root) in provider_global_skill_roots() {
-        if let Ok(relative) = path.strip_prefix(&root) {
-            return format!("{}/{}", provider, relative.display());
-        }
-    }
-    path.display().to_string()
-}
-
-fn extract_skill_name_from_frontmatter(path: &Path) -> Option<String> {
-    let content = std::fs::read_to_string(path).ok()?;
-    let mut lines = content.lines();
-    if lines.next()?.trim() != "---" {
-        return None;
-    }
-
-    for line in lines {
-        let trimmed = line.trim();
-        if trimmed == "---" {
-            break;
-        }
-        if let Some(rest) = trimmed.strip_prefix("name:") {
-            let value = rest.trim().trim_matches('"').trim_matches('"');
-            if !value.is_empty() {
-                return Some(value.to_string());
+        if let Some(state) = self.install_modal.as_mut() {
+            match &state.phase {
+                InstallModalPhase::Installing => {
+                    let message = format!(
+                        "Installing skill...\n\nSlug: {}\nScope: {}\n\nPlease wait.",
+                        state.slug, state.scope_label
+                    );
+                    let mut dialog = Dialog::info("Installing Skill", &message)
+                        .width_percent(0.58)
+                        .height_percent(0.30)
+                        .overlay(true)
+                        .content_padding(2, 1)
+                        .message_alignment(Alignment::Left)
+                        .wrap_mode(DialogWrap::WordTrim)
+                        .shadow(DialogShadow::Medium)
+                        .hide_footer();
+                    frame.render_widget(DialogWidget::new(&mut dialog), root_area);
+                }
+                InstallModalPhase::Finished { success, message } => {
+                    let title = if *success {
+                        "Install Complete"
+                    } else {
+                        "Install Failed"
+                    };
+                    let mut dialog = if *success {
+                        Dialog::success(title, message)
+                    } else {
+                        Dialog::warning(title, message)
+                    }
+                    .buttons(vec!["Continue"])
+                    .default_selection(0)
+                    .width_percent(0.58)
+                    .height_percent(0.30)
+                    .overlay(true)
+                    .content_padding(2, 1)
+                    .message_alignment(Alignment::Left)
+                    .wrap_mode(DialogWrap::WordTrim)
+                    .shadow(DialogShadow::Medium);
+                    frame.render_widget(DialogWidget::new(&mut dialog), root_area);
+                }
             }
         }
-    }
-    None
-}
 
-fn skill_node_at_path<'a>(nodes: &'a [SkillTreeNode], path: &[usize]) -> Option<&'a SkillTreeNode> {
-    let mut current_nodes = nodes;
-    let mut current_node: Option<&SkillTreeNode> = None;
-    for idx in path {
-        let node = current_nodes.get(*idx)?;
-        current_node = Some(node);
-        current_nodes = &node.children;
-    }
-    current_node
-}
+        if let Some(state) = self.agent_picker_modal.as_mut() {
+            let modal_width = root_area.width.min(86);
+            let modal_height = root_area.height.min(26);
+            let modal_area = Rect {
+                x: root_area.x + (root_area.width.saturating_sub(modal_width)) / 2,
+                y: root_area.y + (root_area.height.saturating_sub(modal_height)) / 2,
+                width: modal_width,
+                height: modal_height,
+            };
 
-fn collect_expanded_skill_paths(
-    nodes: &[SkillTreeNode],
-    base: &mut Vec<usize>,
-    expanded: &mut HashSet<Vec<usize>>,
-) {
-    for (idx, node) in nodes.iter().enumerate() {
-        base.push(idx);
-        expanded.insert(base.clone());
-        collect_expanded_skill_paths(&node.children, base, expanded);
-        let _ = base.pop();
-    }
-}
+            frame.render_widget(Clear, modal_area);
+            let pane = Pane::new("Default Agents")
+                .with_icon(TERMINAL_ICON)
+                .border_style(Style::default().fg(Color::Green));
+            let (inner, _) = pane.render_block(frame, modal_area);
 
-fn insert_skill_node(
-    nodes: &mut Vec<SkillTreeNode>,
-    comps: &[String],
-    skill_file: PathBuf,
-    skill_name: String,
-) {
-    if comps.is_empty() {
-        return;
-    }
-    let current = &comps[0];
+            let rows = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(1),
+                    Constraint::Length(1),
+                    Constraint::Min(0),
+                    Constraint::Length(2),
+                ])
+                .split(inner);
 
-    let index = if let Some(idx) = nodes.iter().position(|n| &n.dir_name == current) {
-        idx
-    } else {
-        nodes.push(SkillTreeNode {
-            dir_name: current.clone(),
-            display_name: current.clone(),
-            skill_file: None,
-            children: Vec::new(),
-        });
-        nodes.len() - 1
-    };
+            frame.render_widget(
+                Paragraph::new("Select default install agents (multi-select)")
+                    .style(Style::default().fg(Color::White)),
+                rows[0],
+            );
+            frame.render_widget(
+                Paragraph::new(format!("Search: {}", state.query))
+                    .style(Style::default().fg(Color::DarkGray)),
+                rows[1],
+            );
 
-    if comps.len() == 1 {
-        nodes[index].skill_file = Some(skill_file);
-        nodes[index].display_name = skill_name;
-    } else {
-        insert_skill_node(
-            &mut nodes[index].children,
-            &comps[1..],
-            skill_file,
-            skill_name,
-        );
-    }
-}
-
-fn collect_skill_files(dir: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_dir() {
-            collect_skill_files(&path, out)?;
-        } else if path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .map(|s| s.eq_ignore_ascii_case("SKILL.md"))
-            .unwrap_or(false)
-        {
-            out.push(path);
-        }
-    }
-    Ok(())
-}
-
-fn add_skill_nodes_from_root(
-    nodes: &mut Vec<SkillTreeNode>,
-    start: &Path,
-    provider_prefix: Option<&str>,
-) -> io::Result<()> {
-    if !start.exists() {
-        return Ok(());
-    }
-
-    let mut skill_files = Vec::new();
-    collect_skill_files(start, &mut skill_files)?;
-
-    for file in skill_files {
-        let Some(parent) = file.parent() else {
-            continue;
-        };
-        let Ok(relative) = parent.strip_prefix(start) else {
-            continue;
-        };
-
-        let mut comps: Vec<String> = Vec::new();
-        if let Some(prefix) = provider_prefix {
-            comps.push(prefix.to_string());
-        }
-        comps.extend(
-            relative
+            let filtered = Self::filtered_agent_keys(&state.query);
+            let list_height = rows[2].height as usize;
+            let mut lines = Vec::new();
+            for (idx, agent) in filtered
                 .iter()
-                .filter_map(|c| c.to_str().map(|s| s.to_string())),
-        );
+                .take(list_height.saturating_sub(1))
+                .enumerate()
+            {
+                let selected = state.selected_agents.iter().any(|item| item == agent);
+                let focused = idx == state.selected_index;
+                let marker = if selected { "●" } else { "○" };
+                let style = if focused {
+                    Style::default().fg(Color::Black).bg(YAZI_CYAN)
+                } else if selected {
+                    Style::default().fg(FAVORITE_ORANGE)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                lines.push(Line::from(Span::styled(
+                    format!("{} {}", marker, agent),
+                    style,
+                )));
+            }
 
-        if comps.is_empty() {
-            continue;
-        }
+            let save_row_index = filtered.len();
+            let save_focused = state.selected_index == save_row_index;
+            let save_style = if save_focused {
+                Style::default().fg(Color::Black).bg(YAZI_CYAN)
+            } else {
+                Style::default().fg(Color::Green)
+            };
+            lines.push(Line::from(Span::styled(
+                "[ Save default agents ]",
+                save_style,
+            )));
 
-        let skill_name = extract_skill_name_from_frontmatter(&file)
-            .unwrap_or_else(|| comps.last().cloned().unwrap_or_else(|| "skill".to_string()));
-        insert_skill_node(nodes, &comps, file.clone(), skill_name);
-    }
+            frame.render_widget(Paragraph::new(lines), rows[2]);
 
-    Ok(())
-}
-
-fn load_project_skill_hierarchy() -> io::Result<Vec<SkillTreeNode>> {
-    let root = PathBuf::from(ROOT_AGENTS_PATH);
-    let skills_root = root.join("skills");
-    let start = if skills_root.exists() {
-        skills_root
-    } else {
-        root
-    };
-
-    let mut nodes = Vec::new();
-    add_skill_nodes_from_root(&mut nodes, &start, None)?;
-    Ok(nodes)
-}
-
-fn global_agents_skill_root() -> PathBuf {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("~"));
-    home.join(".agents/skills")
-}
-
-fn provider_global_skill_roots() -> Vec<(String, PathBuf)> {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("~"));
-
-    vec![
-        ("claude-code".to_string(), home.join(".claude/skills")),
-        ("opencode".to_string(), home.join(".config/opencode/skills")),
-        ("cursor".to_string(), home.join(".cursor/skills")),
-        ("gemini-cli".to_string(), home.join(".gemini/skills")),
-        (
-            "windsurf".to_string(),
-            home.join(".codeium/windsurf/skills"),
-        ),
-        ("goose".to_string(), home.join(".config/goose/skills")),
-    ]
-}
-
-fn load_global_skill_hierarchy() -> io::Result<Vec<SkillTreeNode>> {
-    let mut nodes = Vec::new();
-    let agents_root = global_agents_skill_root();
-    if agents_root.exists() {
-        add_skill_nodes_from_root(&mut nodes, &agents_root, None)?;
-        return Ok(nodes);
-    }
-
-    for (provider, root) in provider_global_skill_roots() {
-        add_skill_nodes_from_root(&mut nodes, &root, Some(&provider))?;
-    }
-    Ok(nodes)
-}
-
-fn first_skill_file(nodes: &[SkillTreeNode]) -> Option<PathBuf> {
-    for node in nodes {
-        if let Some(file) = &node.skill_file {
-            return Some(file.clone());
-        }
-        if let Some(file) = first_skill_file(&node.children) {
-            return Some(file);
+            let footer = if state.required_on_startup {
+                "Enter/Space toggle, Enter on Save to continue"
+            } else {
+                "Enter/Space toggle, Enter on Save to persist, Esc close"
+            };
+            frame.render_widget(
+                Paragraph::new(footer).style(Style::default().fg(Color::DarkGray)),
+                rows[3],
+            );
         }
     }
-    None
 }
 
 fn initialize_startup_state() -> io::Result<(AppConfig, Option<StartupDialogState>)> {

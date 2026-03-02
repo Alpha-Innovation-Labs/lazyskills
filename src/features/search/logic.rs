@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
+use std::{thread, vec::Vec};
 
-use skills_tui::adapters::skills_sh::{SkillListItem, SkillsMode};
+use skills_tui::adapters::skills_sh::{SkillListItem, SkillsMode, SkillsShClient};
 
 use super::state::SearchState;
 
@@ -39,37 +40,99 @@ pub fn refresh_search_results(state: &mut SearchState) {
     };
 
     let query = state.search_query.trim().to_string();
-    let result = if query.is_empty() {
-        client
-            .fetch_catalog_page(SkillsMode::AllTime, 1)
-            .map(|page| page.skills)
+    let (result, used_homepage_all_time) = if query.is_empty() {
+        match client.fetch_homepage_all_time_leaderboard_cached_swr(200) {
+            Ok(skills) => (Ok(skills), true),
+            Err(_) => (
+                client
+                    .fetch_catalog_page_cached_swr(SkillsMode::AllTime, 1)
+                    .map(|page| page.skills),
+                false,
+            ),
+        }
     } else {
-        client
-            .fetch_search(&query, 50)
-            .map(|response| response.skills)
+        (
+            client
+                .fetch_search_cached_swr(&query, 50)
+                .map(|response| response.skills),
+            false,
+        )
     };
 
     match result {
         Ok(skills) => {
             state.search_results = skills;
             state.search_selected = 0;
+            state.search_offset = 0;
             state.search_detail = None;
             state.search_status = if query.is_empty() {
-                "Showing top all-time skills (type to search)".to_string()
+                if used_homepage_all_time {
+                    "Showing homepage all-time leaderboard".to_string()
+                } else {
+                    "Showing top all-time skills".to_string()
+                }
             } else {
                 format!("Found {} results", state.search_results.len())
             };
             if !state.search_results.is_empty() {
                 queue_selected_search_detail(state);
+                prefetch_visible_search_details_nonblocking(state);
             }
         }
         Err(err) => {
             state.search_results.clear();
             state.search_detail = None;
             state.search_selected = 0;
+            state.search_offset = 0;
             state.search_status = format!("Search failed: {err}");
         }
     }
+}
+
+fn prefetch_visible_search_details_nonblocking(state: &SearchState) {
+    let slugs = state
+        .search_results
+        .iter()
+        .filter_map(skill_slug)
+        .collect::<Vec<_>>();
+    if slugs.is_empty() {
+        return;
+    }
+
+    let gh_cache = state.search_gh_cache.clone();
+
+    thread::spawn(move || {
+        let worker_count = thread::available_parallelism()
+            .map(|n| n.get().min(8))
+            .unwrap_or(4)
+            .max(1);
+        let chunk_size = slugs.len().div_ceil(worker_count);
+
+        let mut workers = Vec::new();
+        for chunk in slugs.chunks(chunk_size.max(1)) {
+            let chunk_owned = chunk.to_vec();
+            let gh_cache = gh_cache.clone();
+            workers.push(thread::spawn(move || {
+                let Ok(client) = SkillsShClient::new() else {
+                    return;
+                };
+                for slug in chunk_owned {
+                    if let Some((owner, repo, skill)) = split_slug(&slug) {
+                        if let Ok(detail) = client.fetch_skill_detail_cached_swr(owner, repo, skill)
+                        {
+                            if let Ok(mut cache) = gh_cache.lock() {
+                                cache.insert(slug, detail.github_stars);
+                            }
+                        }
+                    }
+                }
+            }));
+        }
+
+        for worker in workers {
+            let _ = worker.join();
+        }
+    });
 }
 
 pub fn queue_search_refresh(state: &mut SearchState) {
@@ -131,8 +194,11 @@ pub fn flush_pending_search_detail_if_ready(state: &mut SearchState) -> bool {
         return true;
     };
 
-    match client.fetch_skill_detail(owner, repo, skill) {
+    match client.fetch_skill_detail_cached_swr(owner, repo, skill) {
         Ok(detail) => {
+            if let Ok(mut cache) = state.search_gh_cache.lock() {
+                cache.insert(slug, detail.github_stars.clone());
+            }
             state.search_detail = Some(detail);
         }
         Err(err) => {
