@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::time::Instant;
 
 use anyhow::bail;
 use crossterm::event::{
@@ -30,6 +31,13 @@ pub struct SkillsTuiApp {
     focus: FocusPane,
     markdown_widget: MarkdownWidget<'static>,
     markdown_area: Rect,
+    mouse_x: u16,
+    mouse_y: u16,
+    redraws: u64,
+    frames_this_second: u32,
+    fps: u16,
+    fps_window_start: Instant,
+    last_move_processed: Instant,
 }
 
 impl SkillsTuiApp {
@@ -47,6 +55,13 @@ impl SkillsTuiApp {
             focus: FocusPane::Skills,
             markdown_widget,
             markdown_area: Rect::default(),
+            mouse_x: 0,
+            mouse_y: 0,
+            redraws: 0,
+            frames_this_second: 0,
+            fps: 0,
+            fps_window_start: Instant::now(),
+            last_move_processed: Instant::now(),
         })
     }
 
@@ -72,9 +87,20 @@ impl SkillsTuiApp {
             DoubleClickState::default(),
         )
         .with_has_pane(false)
-        .show_toc(false)
+        .show_toc(true)
         .show_scrollbar(true)
         .show_statusline(true)
+    }
+
+    fn update_fps(&mut self) {
+        self.frames_this_second = self.frames_this_second.saturating_add(1);
+        let elapsed = self.fps_window_start.elapsed();
+        if elapsed.as_secs() >= 1 {
+            let elapsed_ms = elapsed.as_millis().max(1) as u32;
+            self.fps = ((self.frames_this_second.saturating_mul(1000)) / elapsed_ms) as u16;
+            self.frames_this_second = 0;
+            self.fps_window_start = Instant::now();
+        }
     }
 
     fn update_selected(&mut self, next: usize) {
@@ -145,6 +171,17 @@ impl CoordinatorApp for SkillsTuiApp {
                 }
             }
             CoordinatorEvent::Mouse(mouse) => {
+                let is_moved = matches!(mouse.kind, crossterm::event::MouseEventKind::Moved);
+                self.mouse_x = mouse.column;
+                self.mouse_y = mouse.row;
+
+                if is_moved {
+                    if self.last_move_processed.elapsed().as_millis() < 24 {
+                        return Ok(CoordinatorAction::Continue);
+                    }
+                    self.last_move_processed = Instant::now();
+                }
+
                 let mouse_event = CrosstermMouseEvent {
                     kind: mouse.kind,
                     column: mouse.column,
@@ -155,7 +192,13 @@ impl CoordinatorApp for SkillsTuiApp {
                 let markdown_event = self
                     .markdown_widget
                     .handle_mouse(mouse_event, self.markdown_area);
-                if matches!(markdown_event, MarkdownEvent::None) {
+                if is_moved {
+                    if matches!(markdown_event, MarkdownEvent::TocHoverChanged { .. }) {
+                        Ok(CoordinatorAction::Redraw)
+                    } else {
+                        Ok(CoordinatorAction::Continue)
+                    }
+                } else if matches!(markdown_event, MarkdownEvent::None) {
                     Ok(CoordinatorAction::Continue)
                 } else {
                     Ok(CoordinatorAction::Redraw)
@@ -167,6 +210,9 @@ impl CoordinatorApp for SkillsTuiApp {
     }
 
     fn on_draw(&mut self, frame: &mut Frame) {
+        self.redraws = self.redraws.saturating_add(1);
+        self.update_fps();
+
         let area = frame.area();
         let rows = Layout::default()
             .direction(Direction::Vertical)
@@ -179,8 +225,8 @@ impl CoordinatorApp for SkillsTuiApp {
             FocusPane::Preview => "focus: preview",
         };
         let title_text = format!(
-            "skills-tui | {} | tab switch pane | {} | q quit",
-            active_path, focus_hint
+            "skills-tui | {} | {} fps | redraws {} | mouse {},{} | tab switch pane | {} | q quit",
+            active_path, self.fps, self.redraws, self.mouse_x, self.mouse_y, focus_hint
         );
         let title = Paragraph::new(title_text).style(
             Style::default()

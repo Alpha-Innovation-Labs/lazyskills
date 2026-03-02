@@ -7,7 +7,7 @@ use ratkit::prelude::{run as run_tui, RunnerConfig};
 pub fn run() -> anyhow::Result<()> {
     let app = skills_tui_app::SkillsTuiApp::new(".agents")?;
     let config = RunnerConfig {
-        tick_rate: Duration::from_millis(200),
+        tick_rate: Duration::from_millis(250),
         ..RunnerConfig::default()
     };
 
