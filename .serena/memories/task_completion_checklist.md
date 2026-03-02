@@ -1,0 +1,1 @@
+After code changes: run cargo check (or just check) and fix compile issues. If behavior changed intentionally, ensure related UI/config messages remain consistent with requirements. Summarize changed files and rationale. Only commit/push when explicitly requested by user.
