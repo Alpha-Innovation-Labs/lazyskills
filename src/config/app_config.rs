@@ -20,6 +20,8 @@ pub struct SkillsCommandConfig {
     pub global_command: String,
     pub npx_command: String,
     pub npx_package: String,
+    #[serde(default)]
+    pub default_agents: Vec<String>,
     pub expected_identity_substring: String,
     pub global_command_verified: bool,
     pub global_command_version: Option<String>,
@@ -29,8 +31,6 @@ pub struct SkillsCommandConfig {
 pub struct AppConfig {
     pub version: u8,
     pub skills_command: SkillsCommandConfig,
-    #[serde(default)]
-    pub favorite_skills: Vec<String>,
 }
 
 impl Default for AppConfig {
@@ -42,11 +42,11 @@ impl Default for AppConfig {
                 global_command: "skills".to_string(),
                 npx_command: "npx".to_string(),
                 npx_package: "skills".to_string(),
+                default_agents: Vec::new(),
                 expected_identity_substring: "skills".to_string(),
                 global_command_verified: false,
                 global_command_version: None,
             },
-            favorite_skills: Vec::new(),
         }
     }
 }
