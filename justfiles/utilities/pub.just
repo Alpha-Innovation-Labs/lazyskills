@@ -1,0 +1,47 @@
+# Publish to crates.io (bumps version, creates tag, publishes)
+# Usage: just pub
+
+pub:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "Checking git status..."
+    if ! git diff --quiet --exit-code || ! git diff --cached --quiet --exit-code; then
+        echo "Found uncommitted changes. Committing all changes before release..."
+        git add .
+        git commit -m "chore: prepare for release"
+        echo "Committed all pending changes"
+    else
+        echo "Git working directory is clean"
+    fi
+
+    just pub-bump
+
+    NEW_VERSION=$(awk -F'"' '/^version = "[0-9]+\.[0-9]+\.[0-9]+"/ { print $2; exit }' Cargo.toml)
+    echo "Release version: $NEW_VERSION"
+
+    cargo check --quiet
+
+    echo "Committing version bump..."
+    git add Cargo.toml Cargo.lock
+    git commit -m "chore: bump version to $NEW_VERSION"
+    echo "Committed version bump"
+
+    echo "Creating git tag v$NEW_VERSION..."
+    git tag "v$NEW_VERSION"
+    echo "Created tag v$NEW_VERSION"
+
+    if git remote | grep -q .; then
+        echo "Pushing to remote..."
+        git push
+        git push --tags
+        echo "Pushed commits and tags"
+    else
+        echo "No git remote configured. Skipping push."
+        echo "To add a remote: git remote add origin <url>"
+    fi
+
+    echo "Publishing to crates.io..."
+    cargo publish
+
+    echo "Published version $NEW_VERSION to crates.io"
