@@ -1,4 +1,3 @@
-use std::fs;
 use std::io;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -7,7 +6,7 @@ use crossterm::event::{
     KeyCode, KeyEvent as CrosstermKeyEvent, KeyEventState, MouseEvent as CrosstermMouseEvent,
 };
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::Rect,
     style::{Color, Style},
     text::Line,
     widgets::Paragraph,
@@ -26,19 +25,14 @@ const DEFAULT_SKILL_PATH: &str = ".agents/skills/ratkit/SKILL.md";
 struct SkillPreviewApp {
     widget: MarkdownWidget<'static>,
     markdown_area: Rect,
-    mouse_x: u16,
-    mouse_y: u16,
-    redraws: u64,
-    frames_this_second: u32,
-    fps: u16,
-    fps_window_start: Instant,
     last_move_processed: Instant,
+    toast_message: Option<String>,
+    toast_expires_at: Option<Instant>,
 }
 
 impl SkillPreviewApp {
-    fn new(markdown_content: String) -> Self {
-        let mut source = SourceState::default();
-        source.set_source_string(markdown_content.clone());
+    fn new(source: SourceState) -> Self {
+        let markdown_content = source.content().unwrap_or_default().to_owned();
 
         let mut scroll = ScrollState::default();
         scroll.update_total_lines(markdown_content.lines().count().max(1));
@@ -64,25 +58,26 @@ impl SkillPreviewApp {
         Self {
             widget,
             markdown_area: Rect::default(),
-            mouse_x: 0,
-            mouse_y: 0,
-            redraws: 0,
-            frames_this_second: 0,
-            fps: 0,
-            fps_window_start: Instant::now(),
             last_move_processed: Instant::now(),
+            toast_message: None,
+            toast_expires_at: None,
         }
     }
 
-    fn update_fps(&mut self) {
-        self.frames_this_second = self.frames_this_second.saturating_add(1);
-        let elapsed = self.fps_window_start.elapsed();
-        if elapsed >= Duration::from_secs(1) {
-            let elapsed_ms = elapsed.as_millis().max(1) as u32;
-            self.fps = ((self.frames_this_second.saturating_mul(1000)) / elapsed_ms) as u16;
-            self.frames_this_second = 0;
-            self.fps_window_start = Instant::now();
+    fn show_toast(&mut self, message: impl Into<String>) {
+        self.toast_message = Some(message.into());
+        self.toast_expires_at = Some(Instant::now() + Duration::from_secs(2));
+    }
+
+    fn clear_expired_toast(&mut self) -> bool {
+        if let Some(expires_at) = self.toast_expires_at {
+            if Instant::now() >= expires_at {
+                self.toast_message = None;
+                self.toast_expires_at = None;
+                return true;
+            }
         }
+        false
     }
 }
 
@@ -111,6 +106,13 @@ impl CoordinatorApp for SkillPreviewApp {
                 };
 
                 let markdown_event = self.widget.handle_key(key_event);
+                let copied_chars = match &markdown_event {
+                    MarkdownEvent::Copied { text } => Some(text.chars().count()),
+                    _ => None,
+                };
+                if let Some(copied_chars) = copied_chars {
+                    self.show_toast(format!("Copied {} chars to clipboard", copied_chars));
+                }
                 if matches!(markdown_event, MarkdownEvent::None) {
                     Ok(CoordinatorAction::Continue)
                 } else {
@@ -119,8 +121,6 @@ impl CoordinatorApp for SkillPreviewApp {
             }
             CoordinatorEvent::Mouse(mouse) => {
                 let is_moved = matches!(mouse.kind, crossterm::event::MouseEventKind::Moved);
-                self.mouse_x = mouse.x();
-                self.mouse_y = mouse.y();
 
                 if is_moved {
                     if self.last_move_processed.elapsed() < Duration::from_millis(24) {
@@ -137,6 +137,13 @@ impl CoordinatorApp for SkillPreviewApp {
                 };
 
                 let markdown_event = self.widget.handle_mouse(mouse_event, self.markdown_area);
+                let copied_chars = match &markdown_event {
+                    MarkdownEvent::Copied { text } => Some(text.chars().count()),
+                    _ => None,
+                };
+                if let Some(copied_chars) = copied_chars {
+                    self.show_toast(format!("Copied {} chars to clipboard", copied_chars));
+                }
 
                 if is_moved {
                     if matches!(markdown_event, MarkdownEvent::TocHoverChanged { .. }) {
@@ -148,48 +155,55 @@ impl CoordinatorApp for SkillPreviewApp {
                     Ok(CoordinatorAction::Redraw)
                 }
             }
+            CoordinatorEvent::Tick(_) => {
+                if self.clear_expired_toast() {
+                    Ok(CoordinatorAction::Redraw)
+                } else {
+                    Ok(CoordinatorAction::Continue)
+                }
+            }
             CoordinatorEvent::Resize(_) => Ok(CoordinatorAction::Redraw),
             _ => Ok(CoordinatorAction::Continue),
         }
     }
 
     fn on_draw(&mut self, frame: &mut Frame) {
-        self.redraws = self.redraws.saturating_add(1);
-        self.update_fps();
+        self.markdown_area = frame.area();
+        frame.render_widget(&mut self.widget, self.markdown_area);
 
-        let area = frame.area();
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Length(1), Constraint::Min(0)])
-            .split(area);
-
-        let dev_bar_area = chunks[0];
-        let markdown_area = chunks[1];
-        self.markdown_area = markdown_area;
-
-        let dev_text = format!(
-            " PREVIEW | FPS {:>3} | REDRAWS {:>7} | MOUSE {:>4},{:<4} | {} | q quit | wheel scroll ",
-            self.fps, self.redraws, self.mouse_x, self.mouse_y, DEFAULT_SKILL_PATH
-        );
-        frame.render_widget(
-            Paragraph::new(Line::from(dev_text))
-                .style(Style::default().fg(Color::Black).bg(Color::Cyan)),
-            dev_bar_area,
-        );
-
-        frame.render_widget(&mut self.widget, markdown_area);
+        if let Some(message) = &self.toast_message {
+            if self.markdown_area.height > 0 {
+                let toast_width =
+                    (message.chars().count() as u16 + 2).min(self.markdown_area.width);
+                let toast_area = Rect {
+                    x: self.markdown_area.x
+                        + self.markdown_area.width.saturating_sub(toast_width) / 2,
+                    y: self.markdown_area.y + self.markdown_area.height.saturating_sub(1),
+                    width: toast_width,
+                    height: 1,
+                };
+                frame.render_widget(
+                    Paragraph::new(Line::from(format!(" {}", message)))
+                        .style(Style::default().fg(Color::Black).bg(Color::LightGreen)),
+                    toast_area,
+                );
+            }
+        }
     }
 }
 
-fn load_default_skill_markdown() -> io::Result<String> {
+fn load_default_skill_source() -> io::Result<SourceState> {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push(DEFAULT_SKILL_PATH);
-    fs::read_to_string(path)
+
+    let mut source = SourceState::default();
+    source.set_source_file(path)?;
+    Ok(source)
 }
 
 fn main() -> io::Result<()> {
-    let markdown = load_default_skill_markdown()?;
-    let app = SkillPreviewApp::new(markdown);
+    let source = load_default_skill_source()?;
+    let app = SkillPreviewApp::new(source);
     let config = RunnerConfig {
         tick_rate: Duration::from_millis(250),
         ..RunnerConfig::default()
