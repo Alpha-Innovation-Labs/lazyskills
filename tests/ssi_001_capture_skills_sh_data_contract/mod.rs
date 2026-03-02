@@ -1,0 +1,5 @@
+mod test_detail_contract_matches_live_rsc_payload;
+mod test_detail_fallback_uses_html_when_rsc_unavailable;
+mod test_end_to_end_catalog_and_detail_ingestion;
+mod test_list_contract_matches_live_payload;
+mod test_search_contract_matches_live_payload;

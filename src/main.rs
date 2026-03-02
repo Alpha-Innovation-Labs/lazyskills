@@ -1,8 +1,9 @@
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{Duration, Instant};
 use std::{collections::HashSet, fs};
+
+mod features;
 
 use crossterm::event::{
     KeyCode, KeyEvent as CrosstermKeyEvent, KeyEventState, MouseButton,
@@ -30,64 +31,20 @@ use ratkit::widgets::markdown_preview::{
 };
 use ratkit::widgets::{Dialog, DialogWidget};
 use ratkit::widgets::{HotkeyFooter, HotkeyItem};
-use serde::{Deserialize, Serialize};
-use skills_tui::adapters::skills_sh::{SkillDetail, SkillListItem, SkillsMode, SkillsShClient};
+
+use crate::features::search::{logic as search_logic, state::SearchState};
+use skills_tui::config::{
+    initialize_skills_command_config as initialize_app_config, persist_app_config, AppConfig,
+    SkillsCommandMode, APP_CONFIG_PATH,
+};
+use skills_tui::services::skills_command::{
+    install_global_skills_cli, run_configured_skills_command, verify_global_skills_command,
+};
 
 const DEFAULT_SKILL_PATH: &str = ".agents/skills/ratkit/SKILL.md";
-const APP_CONFIG_PATH: &str = ".agents/skills-tui-config.json";
 const ROOT_AGENTS_PATH: &str = ".agents";
 const TERMINAL_ICON: &str = "";
 const YAZI_CYAN: Color = Color::Rgb(3, 169, 244);
-const SKILLS_CONFIG_VERSION: u8 = 1;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-enum SkillsCommandMode {
-    Global,
-    Npx,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct SkillsCommandConfig {
-    mode: SkillsCommandMode,
-    global_command: String,
-    npx_command: String,
-    npx_package: String,
-    expected_identity_substring: String,
-    global_command_verified: bool,
-    global_command_version: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct AppConfig {
-    version: u8,
-    skills_command: SkillsCommandConfig,
-    #[serde(default)]
-    favorite_skills: Vec<String>,
-}
-
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            version: SKILLS_CONFIG_VERSION,
-            skills_command: SkillsCommandConfig {
-                mode: SkillsCommandMode::Global,
-                global_command: "skills".to_string(),
-                npx_command: "npx".to_string(),
-                npx_package: "skills".to_string(),
-                expected_identity_substring: "skills".to_string(),
-                global_command_verified: false,
-                global_command_version: None,
-            },
-            favorite_skills: Vec::new(),
-        }
-    }
-}
-
-struct StartupConfigOutcome {
-    config: AppConfig,
-    startup_dialog: Option<StartupDialogState>,
-}
 
 enum StartupDialogState {
     Info {
@@ -161,19 +118,7 @@ struct SkillPreviewApp {
     delete_confirm_dialog: Option<DeleteConfirmDialogState>,
     pending_preview_path: Option<PathBuf>,
     pending_preview_since: Option<Instant>,
-    search_client: Option<SkillsShClient>,
-    search_query: String,
-    search_results: Vec<SkillListItem>,
-    search_selected: usize,
-    search_detail: Option<SkillDetail>,
-    search_status: String,
-    pending_search_refresh_since: Option<Instant>,
-    pending_search_detail_slug: Option<String>,
-    pending_search_detail_since: Option<Instant>,
-    config_text: String,
-    config_cursor_line: usize,
-    config_cursor_col: usize,
-    config_scroll: usize,
+    search: SearchState,
     config_selected_field: usize,
     config_value_cursor: usize,
     config_status: String,
@@ -218,203 +163,52 @@ impl SkillPreviewApp {
             self.pending_preview_since = None;
             self.ensure_skill_selection_visible();
             self.open_selected_file_immediate();
-        } else if matches!(view, AppView::Search) && self.search_results.is_empty() {
+        } else if matches!(view, AppView::Search) && self.search.search_results.is_empty() {
             self.refresh_search_results();
         } else if matches!(view, AppView::Config) {
             self.config_status = "Edit values. Ctrl+S save. Up/Down select field.".to_string();
         }
     }
 
-    fn selected_search_item(&self) -> Option<&SkillListItem> {
-        self.search_results.get(self.search_selected)
-    }
-
-    fn skill_slug(item: &SkillListItem) -> Option<String> {
-        if let Some(id) = item.id.as_ref() {
-            if !id.is_empty() {
-                return Some(id.clone());
-            }
-        }
-        let skill_id = item.skill_id.as_ref()?;
-        if item.source.is_empty() {
-            return None;
-        }
-        Some(format!("{}/{}", item.source, skill_id))
-    }
-
-    fn split_slug(slug: &str) -> Option<(&str, &str, &str)> {
-        let mut parts = slug.split('/');
-        let owner = parts.next()?;
-        let repo = parts.next()?;
-        let skill = parts.next()?;
-        Some((owner, repo, skill))
-    }
-
     fn refresh_search_results(&mut self) {
-        let Some(client) = self.search_client.as_ref() else {
-            self.search_status = "Search unavailable: failed to initialize client".to_string();
-            self.search_results.clear();
-            self.search_detail = None;
-            self.search_selected = 0;
-            return;
-        };
-
-        let query = self.search_query.trim().to_string();
-        let result = if query.is_empty() {
-            client
-                .fetch_catalog_page(SkillsMode::AllTime, 1)
-                .map(|page| page.skills)
-        } else {
-            client
-                .fetch_search(&query, 50)
-                .map(|response| response.skills)
-        };
-
-        match result {
-            Ok(skills) => {
-                self.search_results = skills;
-                self.search_selected = 0;
-                self.search_detail = None;
-                self.search_status = if query.is_empty() {
-                    "Showing top all-time skills (type to search)".to_string()
-                } else {
-                    format!("Found {} results", self.search_results.len())
-                };
-                if !self.search_results.is_empty() {
-                    self.queue_selected_search_detail();
-                }
-            }
-            Err(err) => {
-                self.search_results.clear();
-                self.search_detail = None;
-                self.search_selected = 0;
-                self.search_status = format!("Search failed: {err}");
-            }
-        }
+        search_logic::refresh_search_results(&mut self.search);
     }
 
     fn queue_search_refresh(&mut self) {
-        self.pending_search_refresh_since = Some(Instant::now());
+        search_logic::queue_search_refresh(&mut self.search);
     }
 
     fn flush_pending_search_refresh_if_ready(&mut self) -> bool {
-        const SEARCH_QUERY_DEBOUNCE_MS: u64 = 220;
-
-        let Some(pending_since) = self.pending_search_refresh_since else {
-            return false;
-        };
-        if pending_since.elapsed() < Duration::from_millis(SEARCH_QUERY_DEBOUNCE_MS) {
-            return false;
-        }
-
-        self.pending_search_refresh_since = None;
-        self.refresh_search_results();
-        true
-    }
-
-    fn fetch_selected_search_detail(&mut self) {
-        let Some(client) = self.search_client.as_ref() else {
-            self.search_status =
-                "Detail fetch unavailable: failed to initialize client".to_string();
-            return;
-        };
-        let Some(item) = self.selected_search_item() else {
-            return;
-        };
-        let Some(slug) = Self::skill_slug(item) else {
-            self.search_status = "Selected skill is missing a valid slug".to_string();
-            return;
-        };
-        let Some((owner, repo, skill)) = Self::split_slug(&slug) else {
-            self.search_status = format!("Selected slug is invalid: {slug}");
-            return;
-        };
-
-        match client.fetch_skill_detail(owner, repo, skill) {
-            Ok(detail) => {
-                self.search_detail = Some(detail);
-            }
-            Err(err) => {
-                self.search_status = format!("Detail fetch failed: {err}");
-                self.search_detail = None;
-            }
-        }
+        search_logic::flush_pending_search_refresh_if_ready(&mut self.search)
     }
 
     fn queue_selected_search_detail(&mut self) {
-        let Some(item) = self.selected_search_item() else {
-            self.pending_search_detail_slug = None;
-            self.pending_search_detail_since = None;
-            return;
-        };
-        let Some(slug) = Self::skill_slug(item) else {
-            self.pending_search_detail_slug = None;
-            self.pending_search_detail_since = None;
-            return;
-        };
-        self.pending_search_detail_slug = Some(slug);
-        self.pending_search_detail_since = Some(Instant::now());
+        search_logic::queue_selected_search_detail(&mut self.search);
     }
 
     fn install_selected_search_skill(&mut self) {
-        let Some(item) = self.selected_search_item() else {
-            self.search_status = "No search result selected".to_string();
-            return;
-        };
-        let Some(slug) = Self::skill_slug(item) else {
-            self.search_status = "Selected skill is missing a valid slug".to_string();
-            return;
+        let slug = match search_logic::install_selected_search_skill_slug(&self.search) {
+            Ok(slug) => slug,
+            Err(message) => {
+                self.search.search_status = message;
+                return;
+            }
         };
 
-        match self.run_configured_skills_command(&["add", &slug]) {
+        match run_configured_skills_command(&self.app_config.skills_command, &["add", &slug]) {
             Ok(_) => {
                 self.refresh_skill_hierarchies();
                 self.show_toast(format!("Installed {slug}"));
-                self.search_status = format!("Installed {slug}");
+                self.search.search_status = format!("Installed {slug}");
             }
             Err(err) => {
-                self.search_status = format!("Install failed: {err}");
+                self.search.search_status = format!("Install failed: {err}");
             }
         }
     }
 
     fn flush_pending_search_detail_if_ready(&mut self) -> bool {
-        const SEARCH_DETAIL_DEBOUNCE_MS: u64 = 200;
-
-        let Some(pending_since) = self.pending_search_detail_since else {
-            return false;
-        };
-        if pending_since.elapsed() < Duration::from_millis(SEARCH_DETAIL_DEBOUNCE_MS) {
-            return false;
-        }
-
-        let Some(slug) = self.pending_search_detail_slug.take() else {
-            self.pending_search_detail_since = None;
-            return false;
-        };
-        self.pending_search_detail_since = None;
-
-        let Some((owner, repo, skill)) = Self::split_slug(&slug) else {
-            self.search_status = format!("Selected slug is invalid: {slug}");
-            return true;
-        };
-        let Some(client) = self.search_client.as_ref() else {
-            self.search_status =
-                "Detail fetch unavailable: failed to initialize client".to_string();
-            return true;
-        };
-
-        match client.fetch_skill_detail(owner, repo, skill) {
-            Ok(detail) => {
-                self.search_detail = Some(detail);
-            }
-            Err(err) => {
-                self.search_status = format!("Detail fetch failed: {err}");
-                self.search_detail = None;
-            }
-        }
-
-        true
+        search_logic::flush_pending_search_detail_if_ready(&mut self.search)
     }
 
     fn config_field_count(&self) -> usize {
@@ -584,25 +378,6 @@ impl SkillPreviewApp {
         }
 
         CoordinatorAction::Redraw
-    }
-
-    fn config_lines(&self) -> Vec<&str> {
-        let mut lines = self.config_text.lines().collect::<Vec<_>>();
-        if lines.is_empty() {
-            lines.push("");
-        }
-        lines
-    }
-
-    fn clamp_config_cursor(&mut self) {
-        let line_count = self.config_lines().len().max(1);
-        self.config_cursor_line = self.config_cursor_line.min(line_count.saturating_sub(1));
-        let line_len = self
-            .config_lines()
-            .get(self.config_cursor_line)
-            .map(|line| line.chars().count())
-            .unwrap_or(0);
-        self.config_cursor_col = self.config_cursor_col.min(line_len);
     }
 
     fn active_skills_nodes(&self) -> &[SkillTreeNode] {
@@ -776,7 +551,10 @@ impl SkillPreviewApp {
             return;
         };
 
-        match self.run_configured_skills_command(&["remove", &remove_target]) {
+        match run_configured_skills_command(
+            &self.app_config.skills_command,
+            &["remove", &remove_target],
+        ) {
             Ok(_) => {
                 self.app_config.favorite_skills.retain(|item| item != &key);
                 if let Err(err) = persist_app_config(&self.app_config) {
@@ -837,48 +615,18 @@ impl SkillPreviewApp {
         true
     }
 
-    fn run_configured_skills_command(&self, args: &[&str]) -> Result<String, String> {
-        let mut command = if matches!(self.app_config.skills_command.mode, SkillsCommandMode::Npx) {
-            let mut cmd = Command::new(&self.app_config.skills_command.npx_command);
-            cmd.arg(&self.app_config.skills_command.npx_package);
-            cmd
-        } else {
-            Command::new(&self.app_config.skills_command.global_command)
-        };
-
-        let output = command
-            .args(args)
-            .output()
-            .map_err(|err| format!("Failed to run command: {}", err))?;
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if stdout.is_empty() {
-                Ok("ok".to_string())
-            } else {
-                Ok(stdout)
-            }
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            let msg = if !stderr.is_empty() {
-                stderr
-            } else if !stdout.is_empty() {
-                stdout
-            } else {
-                format!("Command exited with status {}", output.status)
-            };
-            Err(msg)
-        }
-    }
-
     fn update_selected_skill(&mut self) {
         let Some((_, _, skill_name)) = self.selected_skill_identity() else {
             self.show_toast("Select a skill file to update");
             return;
         };
 
-        let _ = self.run_configured_skills_command(&["check", &skill_name]);
-        match self.run_configured_skills_command(&["update", &skill_name]) {
+        let _ =
+            run_configured_skills_command(&self.app_config.skills_command, &["check", &skill_name]);
+        match run_configured_skills_command(
+            &self.app_config.skills_command,
+            &["update", &skill_name],
+        ) {
             Ok(_) => {
                 self.refresh_skill_hierarchies();
                 self.show_toast("Skill updated");
@@ -970,19 +718,7 @@ impl SkillPreviewApp {
             delete_confirm_dialog: None,
             pending_preview_path: None,
             pending_preview_since: None,
-            search_client: SkillsShClient::new().ok(),
-            search_query: String::new(),
-            search_results: Vec::new(),
-            search_selected: 0,
-            search_detail: None,
-            search_status: "Type to search skills.sh".to_string(),
-            pending_search_refresh_since: None,
-            pending_search_detail_slug: None,
-            pending_search_detail_since: None,
-            config_text: load_config_text().unwrap_or_else(|_| "{\n}\n".to_string()),
-            config_cursor_line: 0,
-            config_cursor_col: 0,
-            config_scroll: 0,
+            search: SearchState::new(),
             config_selected_field: 0,
             config_value_cursor: 0,
             config_status: "Edit values. Ctrl+S to save.".to_string(),
@@ -1248,7 +984,7 @@ impl SkillPreviewApp {
 
     fn apply_startup_choice(&mut self, selected_button: usize) {
         if selected_button == 0 {
-            if let Err(message) = Self::install_global_skills_cli() {
+            if let Err(message) = install_global_skills_cli() {
                 self.startup_dialog = Some(StartupDialogState::ChooseCommand {
                     selected_button,
                     error_message: Some(message),
@@ -1272,41 +1008,6 @@ impl SkillPreviewApp {
         }
 
         self.startup_dialog = None;
-    }
-
-    fn install_global_skills_cli() -> Result<(), String> {
-        let output = Command::new("npm")
-            .args(["install", "-g", "skills"])
-            .output()
-            .map_err(|err| format!("Failed to run npm: {}", err))?;
-
-        if output.status.success() {
-            return Ok(());
-        }
-
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        let details = if !stderr.is_empty() {
-            stderr
-        } else if !stdout.is_empty() {
-            stdout
-        } else {
-            format!("npm exited with status {}", output.status)
-        };
-
-        let concise = details
-            .lines()
-            .take(4)
-            .collect::<Vec<_>>()
-            .join(" ")
-            .chars()
-            .take(220)
-            .collect::<String>();
-
-        Err(format!(
-            "Global install failed (`npm install -g skills`). {}",
-            concise
-        ))
     }
 
     fn handle_startup_dialog_key(
@@ -1404,7 +1105,7 @@ impl CoordinatorApp for SkillPreviewApp {
 
                 if key.key_code == KeyCode::Char('/') && self.current_view != AppView::Search {
                     self.set_view(AppView::Search);
-                    self.search_status =
+                    self.search.search_status =
                         "Global search mode (/api/search). Type to query skills.sh".to_string();
                     return Ok(CoordinatorAction::Redraw);
                 }
@@ -1445,21 +1146,21 @@ impl CoordinatorApp for SkillPreviewApp {
 
                     match key.key_code {
                         KeyCode::Char('/') => {
-                            self.search_status =
+                            self.search.search_status =
                                 "Global search mode (/api/search). Type to query skills.sh"
                                     .to_string();
                             return Ok(CoordinatorAction::Redraw);
                         }
                         KeyCode::Esc => {
-                            if !self.search_query.is_empty() {
-                                self.search_query.clear();
+                            if !self.search.search_query.is_empty() {
+                                self.search.search_query.clear();
                                 self.queue_search_refresh();
                             }
                             return Ok(CoordinatorAction::Redraw);
                         }
                         KeyCode::Backspace => {
-                            if !self.search_query.is_empty() {
-                                self.search_query.pop();
+                            if !self.search.search_query.is_empty() {
+                                self.search.search_query.pop();
                                 self.queue_search_refresh();
                                 return Ok(CoordinatorAction::Redraw);
                             }
@@ -1473,15 +1174,15 @@ impl CoordinatorApp for SkillPreviewApp {
                             return Ok(CoordinatorAction::Redraw);
                         }
                         KeyCode::Up | KeyCode::Char('k') => {
-                            if self.search_selected > 0 {
-                                self.search_selected -= 1;
+                            if self.search.search_selected > 0 {
+                                self.search.search_selected -= 1;
                                 self.queue_selected_search_detail();
                             }
                             return Ok(CoordinatorAction::Redraw);
                         }
                         KeyCode::Down | KeyCode::Char('j') => {
-                            if self.search_selected + 1 < self.search_results.len() {
-                                self.search_selected += 1;
+                            if self.search.search_selected + 1 < self.search.search_results.len() {
+                                self.search.search_selected += 1;
                                 self.queue_selected_search_detail();
                             }
                             return Ok(CoordinatorAction::Redraw);
@@ -1506,7 +1207,7 @@ impl CoordinatorApp for SkillPreviewApp {
                                     .modifiers
                                     .intersects(crossterm::event::KeyModifiers::ALT) =>
                         {
-                            self.search_query.push(ch);
+                            self.search.search_query.push(ch);
                             self.queue_search_refresh();
                             return Ok(CoordinatorAction::Redraw);
                         }
@@ -1761,17 +1462,18 @@ impl CoordinatorApp for SkillPreviewApp {
                 .split(left_inner);
 
             frame.render_widget(
-                Paragraph::new(format!("Query: {}", self.search_query))
+                Paragraph::new(format!("Query: {}", self.search.search_query))
                     .style(Style::default().fg(Color::White)),
                 left_rows[0],
             );
             frame.render_widget(
-                Paragraph::new(self.search_status.clone())
+                Paragraph::new(self.search.search_status.clone())
                     .style(Style::default().fg(Color::DarkGray)),
                 left_rows[1],
             );
 
             let items = self
+                .search
                 .search_results
                 .iter()
                 .map(|item| {
@@ -1792,9 +1494,11 @@ impl CoordinatorApp for SkillPreviewApp {
                 .highlight_symbol("▶ ")
                 .highlight_style(Style::default().fg(Color::Black).bg(YAZI_CYAN));
             let mut list_state = ListState::default();
-            if !self.search_results.is_empty() {
+            if !self.search.search_results.is_empty() {
                 list_state.select(Some(
-                    self.search_selected.min(self.search_results.len() - 1),
+                    self.search
+                        .search_selected
+                        .min(self.search.search_results.len() - 1),
                 ));
             }
             frame.render_stateful_widget(list, left_rows[2], &mut list_state);
@@ -1805,7 +1509,7 @@ impl CoordinatorApp for SkillPreviewApp {
             let (right_inner, _) = right_pane.render_block(frame, self.markdown_area);
 
             let mut detail_lines = Vec::new();
-            if let Some(detail) = &self.search_detail {
+            if let Some(detail) = &self.search.search_detail {
                 detail_lines.push(Line::from("WEEKLY INSTALLS"));
                 detail_lines.push(Line::from(detail.weekly_installs.clone()));
                 detail_lines.push(Line::from(""));
@@ -2449,115 +2153,23 @@ fn first_skill_file(nodes: &[SkillTreeNode]) -> Option<PathBuf> {
     None
 }
 
-fn app_config_path() -> PathBuf {
-    PathBuf::from(APP_CONFIG_PATH)
-}
+fn initialize_startup_state() -> io::Result<(AppConfig, Option<StartupDialogState>)> {
+    let startup = initialize_app_config()?;
 
-fn load_config_text() -> io::Result<String> {
-    let path = app_config_path();
-    if !path.exists() {
-        return Ok("{\n}\n".to_string());
-    }
-    fs::read_to_string(path)
-}
-
-fn save_config_text(text: &str) -> io::Result<()> {
-    let path = app_config_path();
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(path, text)
-}
-
-fn write_app_config(path: &Path, config: &AppConfig) -> io::Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let serialized = serde_json::to_string_pretty(config)
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-    fs::write(path, format!("{}\n", serialized))
-}
-
-fn load_app_config() -> io::Result<AppConfig> {
-    let path = app_config_path();
-    let raw = fs::read_to_string(&path)?;
-    let config: AppConfig = serde_json::from_str(&raw)
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-    Ok(config)
-}
-
-fn persist_app_config(config: &AppConfig) -> io::Result<()> {
-    write_app_config(&app_config_path(), config)
-}
-
-fn run_command_for_output(bin: &str, args: &[&str]) -> Option<String> {
-    let output = Command::new(bin).args(args).output().ok()?;
-    if !output.status.success() {
-        return None;
+    if startup.existing_config {
+        return Ok((startup.config, None));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if !stdout.is_empty() {
-        return Some(stdout);
-    }
-
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    if !stderr.is_empty() {
-        return Some(stderr);
-    }
-
-    None
-}
-
-fn looks_like_semverish(text: &str) -> bool {
-    let compact = text
-        .chars()
-        .filter(|ch| ch.is_ascii_alphanumeric() || *ch == '.' || *ch == '-')
-        .collect::<String>();
-    compact.chars().any(|ch| ch.is_ascii_digit()) && compact.contains('.')
-}
-
-fn verify_global_skills_command(cfg: &SkillsCommandConfig) -> Option<String> {
-    let identity = cfg.expected_identity_substring.to_ascii_lowercase();
-
-    for args in [["--version"].as_slice(), ["version"].as_slice()] {
-        if let Some(output) = run_command_for_output(&cfg.global_command, args) {
-            let lowered = output.to_ascii_lowercase();
-            if lowered.contains(&identity) || looks_like_semverish(&output) {
-                return Some(output.lines().next().unwrap_or("skills").trim().to_string());
-            }
-        }
-    }
-
-    None
-}
-
-fn initialize_skills_command_config() -> io::Result<StartupConfigOutcome> {
-    let path = app_config_path();
-    if path.exists() {
-        return Ok(StartupConfigOutcome {
-            config: load_app_config()?,
-            startup_dialog: None,
-        });
-    }
-
-    let mut config = AppConfig::default();
-    let verified_version = verify_global_skills_command(&config.skills_command);
-    config.skills_command.global_command_verified = verified_version.is_some();
-    config.skills_command.global_command_version = verified_version.clone();
-    if config.skills_command.global_command_verified {
-        config.skills_command.mode = SkillsCommandMode::Global;
-        persist_app_config(&config)?;
-    }
-
-    let startup_dialog = if config.skills_command.global_command_verified {
+    let startup_dialog = if startup.config.skills_command.global_command_verified {
         Some(StartupDialogState::Info {
             title: "Configuration".to_string(),
             message: format!(
                 "Created {} and verified global '{}' ({})",
                 APP_CONFIG_PATH,
-                config.skills_command.global_command,
-                verified_version.unwrap_or_else(|| "version unknown".to_string())
+                startup.config.skills_command.global_command,
+                startup
+                    .verified_version
+                    .unwrap_or_else(|| "version unknown".to_string())
             ),
         })
     } else {
@@ -2567,14 +2179,11 @@ fn initialize_skills_command_config() -> io::Result<StartupConfigOutcome> {
         })
     };
 
-    Ok(StartupConfigOutcome {
-        config,
-        startup_dialog,
-    })
+    Ok((startup.config, startup_dialog))
 }
 
 fn main() -> io::Result<()> {
-    let startup = initialize_skills_command_config()?;
+    let (app_config, startup_dialog) = initialize_startup_state()?;
 
     let project_skills_nodes = load_project_skill_hierarchy()?;
     let global_skills_nodes = load_global_skill_hierarchy()?;
@@ -2590,8 +2199,8 @@ fn main() -> io::Result<()> {
     }
     let source = load_source_from_path(&source_path)?;
     let mut app = SkillPreviewApp::new(
-        startup.config,
-        startup.startup_dialog,
+        app_config,
+        startup_dialog,
         source_path,
         source,
         project_skills_nodes,
