@@ -256,6 +256,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "devicons"
+version = "0.6.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830e47e2f330cf4fdd5a958dcef921b9523ffc21ab6713aa5e77ba2cce03904b"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "dirs"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -592,6 +601,12 @@ dependencies = [
  "bitflags 1.3.2",
  "libc",
 ]
+
+[[package]]
+name = "lazy_static"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "leb128fmt"
@@ -1042,13 +1057,14 @@ dependencies = [
 
 [[package]]
 name = "ratkit"
-version = "0.2.5"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8310ef52db664991e2e32ab83ac1e23571b6f01fb88a07973b00249361a2608"
+checksum = "8971b58a164bb3f34da866fe1f4933a591cfd3fa70c682cde49d9d1fbd43521f"
 dependencies = [
  "anyhow",
  "arboard",
  "crossterm",
+ "devicons",
  "dirs",
  "notify",
  "pulldown-cmark",

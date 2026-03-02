@@ -7,4 +7,4 @@ edition = "2021"
 anyhow = "1"
 crossterm = "0.28"
 ratatui = "0.29"
-ratkit = { version = "0.2.5", features = ["markdown-preview", "resizable-grid"] }
+ratkit = { version = "0.2.7", features = ["markdown-preview", "resizable-grid", "file-system-tree", "pane", "menu-bar", "hotkey-footer"] }
