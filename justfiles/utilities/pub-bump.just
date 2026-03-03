@@ -31,18 +31,6 @@ pub-bump:
     awk -v v="$NEW_VERSION" '
         BEGIN { updated = 0 }
         {
-            if (!updated && $0 ~ /^version = "[0-9]+\.[0-9]+\.[0-9]+"/) {
-                sub(/^version = "[0-9]+\.[0-9]+\.[0-9]+"/, "version = \"" v "\"")
-                updated = 1
-            }
-            print
-        }
-    ' wrappers/python/lazyskills/pyproject.toml > wrappers/python/lazyskills/pyproject.toml.tmp \
-      && mv wrappers/python/lazyskills/pyproject.toml.tmp wrappers/python/lazyskills/pyproject.toml
-
-    awk -v v="$NEW_VERSION" '
-        BEGIN { updated = 0 }
-        {
             if (!updated && $0 ~ /"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"/) {
                 sub(/"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"/, "\"version\": \"" v "\"")
                 updated = 1

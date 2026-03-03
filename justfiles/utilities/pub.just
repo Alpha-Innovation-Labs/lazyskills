@@ -23,7 +23,7 @@ pub:
     cargo check --quiet
 
     echo "Committing version bump..."
-    git add Cargo.toml Cargo.lock wrappers/npm/lazyskills/package.json wrappers/python/lazyskills/pyproject.toml
+    git add Cargo.toml Cargo.lock wrappers/npm/lazyskills/package.json
     git commit -m "chore: bump version to $NEW_VERSION"
     echo "Committed version bump"
 
