@@ -2,4 +2,4 @@
 # Usage: just dev
 
 dev:
-    cargo run
+    cargo run --bin lazyskills
