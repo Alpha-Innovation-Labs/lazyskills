@@ -1,6 +1,14 @@
-import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { homeOptions } from '@/lib/layout.shared';
+import { Footer } from '@/components/footer';
+import { Navbar } from '@/components/navbar';
 
 export default function Layout({ children }: LayoutProps<'/'>) {
-  return <HomeLayout {...homeOptions()}>{children}</HomeLayout>;
+  return (
+    <div className="flex min-h-screen flex-col bg-background">
+      <Navbar />
+
+      <div className="flex-1">{children}</div>
+
+      <Footer />
+    </div>
+  );
 }

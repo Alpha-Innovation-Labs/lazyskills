@@ -20,7 +20,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
         style: 'clerk',
       }}
     >
-      <DocsTitle>{page.data.title}</DocsTitle>
+      <DocsTitle className="font-normal">{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       <DocsBody>
         <MDX
