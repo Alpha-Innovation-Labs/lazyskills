@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-pub const APP_CONFIG_PATH: &str = ".agents/skills-tui-config.json";
+pub const APP_CONFIG_PATH: &str = ".agents/lazyskills-config.json";
 pub const SKILLS_CONFIG_VERSION: u8 = 1;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

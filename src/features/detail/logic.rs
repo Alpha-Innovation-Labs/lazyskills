@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use skills_tui::{adapters::skills_sh::SkillsShClient, config::FavoriteSkill};
+use lazyskills::{adapters::skills_sh::SkillsShClient, config::FavoriteSkill};
 
 use super::state::DetailState;
 
@@ -105,7 +105,7 @@ fn split_slug(slug: &str) -> Option<(&str, &str, &str)> {
 #[cfg(test)]
 mod tests {
     use super::selected_project_global_slug;
-    use skills_tui::config::FavoriteSkill;
+    use lazyskills::config::FavoriteSkill;
 
     #[test]
     fn snapshot_global_slug_without_source_is_none() {

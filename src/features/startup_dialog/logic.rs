@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyModifiers};
-use skills_tui::{
+use lazyskills::{
     config::{persist_app_config, AppConfig, SkillsCommandMode},
     services::skills_command::{install_global_skills_cli, verify_global_skills_command},
 };

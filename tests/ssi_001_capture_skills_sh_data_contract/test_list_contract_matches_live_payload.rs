@@ -1,4 +1,4 @@
-use skills_tui::adapters::skills_sh::{SkillsMode, SkillsShClient};
+use lazyskills::adapters::skills_sh::{SkillsMode, SkillsShClient};
 
 #[test]
 fn test_list_contract_matches_live_payload() {

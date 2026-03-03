@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use skills_tui::adapters::skills_sh::{SkillDetail, SkillListItem, SkillsShClient};
+use lazyskills::adapters::skills_sh::{SkillDetail, SkillListItem, SkillsShClient};
 
 pub struct SearchState {
     pub search_client: Option<SkillsShClient>,

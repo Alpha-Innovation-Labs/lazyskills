@@ -1,4 +1,4 @@
-use skills_tui::adapters::skills_sh::{DetailSource, SkillsShClient};
+use lazyskills::adapters::skills_sh::{DetailSource, SkillsShClient};
 
 #[test]
 fn test_detail_fallback_uses_html_when_rsc_unavailable() {

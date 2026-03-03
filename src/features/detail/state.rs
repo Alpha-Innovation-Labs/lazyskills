@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use skills_tui::adapters::skills_sh::SkillDetail;
+use lazyskills::adapters::skills_sh::SkillDetail;
 
 pub struct DetailState {
     pub show_detail_pane: bool,

@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::app::skills_tree::{
     load_skill_slug_from_lock, skill_remove_target_from_path, SkillTreeNode,
 };
-use skills_tui::config::FavoriteSkill;
+use lazyskills::config::FavoriteSkill;
 
 pub fn display_slug_for_node(node: &SkillTreeNode) -> Option<String> {
     let skill_file = node.skill_file.as_ref()?;

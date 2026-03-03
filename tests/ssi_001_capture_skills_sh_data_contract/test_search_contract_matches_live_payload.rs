@@ -1,4 +1,4 @@
-use skills_tui::adapters::skills_sh::SkillsShClient;
+use lazyskills::adapters::skills_sh::SkillsShClient;
 
 #[test]
 fn test_search_contract_matches_live_payload() {

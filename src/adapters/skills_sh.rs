@@ -94,7 +94,7 @@ impl SkillsShClient {
     pub fn new() -> Result<Self> {
         let http = Client::builder()
             .timeout(Duration::from_secs(30))
-            .user_agent("skills-tui/0.1 (+https://github.com/alpha-innovation-labs/skills-tui)")
+            .user_agent("lazyskills/0.1 (+https://github.com/alpha-innovation-labs/lazyskills)")
             .build()
             .context("failed to build HTTP client")?;
         Ok(Self { http })

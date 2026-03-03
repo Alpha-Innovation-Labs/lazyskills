@@ -1,4 +1,4 @@
-use skills_tui::adapters::skills_sh::{DetailSource, SkillsShClient};
+use lazyskills::adapters::skills_sh::{DetailSource, SkillsShClient};
 
 #[test]
 fn test_detail_contract_matches_live_rsc_payload() {

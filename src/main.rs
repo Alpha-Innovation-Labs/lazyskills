@@ -47,11 +47,11 @@ use crate::features::{
         state::{ExpandedSkillPaths, SkillPath},
     },
 };
-use skills_tui::config::{
+use lazyskills::config::{
     initialize_skills_command_config as initialize_app_config, load_user_config,
     persist_user_config, AppConfig, FavoriteSkill, UserConfig, APP_CONFIG_PATH,
 };
-use skills_tui::services::skills_command::{
+use lazyskills::services::skills_command::{
     install_skill_from_slug_global, install_skill_from_slug_with_agents,
     patch_project_lock_after_remove, remove_skill_noninteractive,
     remove_skill_noninteractive_scoped, run_configured_skills_command,
@@ -438,7 +438,7 @@ impl SkillPreviewApp {
         selected.sort();
         selected.dedup();
         self.app_config.skills_command.default_agents = selected.clone();
-        match skills_tui::config::persist_app_config(&self.app_config) {
+        match lazyskills::config::persist_app_config(&self.app_config) {
             Ok(_) => {
                 self.pending_startup_agent_picker = false;
                 self.show_toast(format!(
@@ -730,7 +730,7 @@ impl SkillPreviewApp {
     fn persist_favorites(&self) -> io::Result<()> {
         persist_user_config(&UserConfig {
             favorites: self.favorites.entries.clone(),
-            ui: skills_tui::config::UiPreferences {
+            ui: lazyskills::config::UiPreferences {
                 show_markdown_pane: self.preview.show_markdown_pane,
                 show_detail_pane: self.detail.show_detail_pane,
             },
@@ -1899,7 +1899,7 @@ impl CoordinatorApp for SkillPreviewApp {
                 selected_installed,
             );
         } else if self.current_view == AppView::Config {
-            let pane = Pane::new("Config (.agents/skills-tui-config.json)")
+            let pane = Pane::new("Config (.agents/lazyskills-config.json)")
                 .with_icon(TERMINAL_ICON)
                 .border_style(Style::default().fg(UNFOCUSED_PANE_BORDER));
             let (inner, _) = pane.render_block(frame, self.grid_area);

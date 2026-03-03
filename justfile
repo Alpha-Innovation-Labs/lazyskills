@@ -4,7 +4,7 @@ default:
 
 help:
     @echo ""
-    @echo "\033[1;36m================ skills-tui Commands ================\033[0m"
+    @echo "\033[1;36m================ lazyskills Commands ================\033[0m"
     @echo ""
     @echo "\033[1;35mDevelopment:\033[0m"
     @echo "  just \033[0;33mdev\033[0m      \033[0;32mRun the TUI locally\033[0m"

@@ -6,7 +6,7 @@ use ratatui::{
     Frame,
 };
 use ratkit::primitives::pane::Pane;
-use skills_tui::config::FavoriteSkill;
+use lazyskills::config::FavoriteSkill;
 
 use crate::app::skills_tree::SkillTreeNode;
 use crate::features::{

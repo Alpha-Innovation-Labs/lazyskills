@@ -74,7 +74,7 @@ pub struct UserConfig {
 pub fn user_config_path() -> io::Result<PathBuf> {
     let base = default_user_data_dir()?;
 
-    Ok(base.join("skills-tui").join("config.json"))
+    Ok(base.join("lazyskills").join("config.json"))
 }
 
 pub fn load_user_config() -> io::Result<UserConfig> {

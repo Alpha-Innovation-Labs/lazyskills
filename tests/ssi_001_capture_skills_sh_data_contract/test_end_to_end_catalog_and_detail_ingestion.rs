@@ -1,4 +1,4 @@
-use skills_tui::adapters::skills_sh::{SkillsMode, SkillsShClient};
+use lazyskills::adapters::skills_sh::{SkillsMode, SkillsShClient};
 
 #[test]
 fn test_end_to_end_catalog_and_detail_ingestion() {

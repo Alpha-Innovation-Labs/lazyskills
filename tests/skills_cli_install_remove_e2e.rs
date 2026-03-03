@@ -2,8 +2,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use skills_tui::config::{AppConfig, SkillsCommandMode};
-use skills_tui::services::skills_command::{
+use lazyskills::config::{AppConfig, SkillsCommandMode};
+use lazyskills::services::skills_command::{
     install_skill_from_slug, remove_skill_noninteractive, verify_global_skills_command,
 };
 
@@ -30,7 +30,7 @@ fn temp_workspace() -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("system time should be after epoch")
         .as_millis();
-    std::env::temp_dir().join(format!("skills_tui_e2e_{ts}"))
+    std::env::temp_dir().join(format!("lazyskills_e2e_{ts}"))
 }
 
 #[test]

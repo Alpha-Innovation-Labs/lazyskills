@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 use std::{thread, vec::Vec};
 
-use skills_tui::adapters::skills_sh::{SkillListItem, SkillsMode, SkillsShClient};
+use lazyskills::adapters::skills_sh::{SkillListItem, SkillsMode, SkillsShClient};
 
 use super::state::SearchState;
 

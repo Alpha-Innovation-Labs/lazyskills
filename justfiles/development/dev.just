@@ -1,4 +1,4 @@
-# Run the skills-tui app
+# Run the lazyskills app
 # Usage: just dev
 
 dev:
