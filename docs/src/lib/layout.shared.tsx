@@ -11,7 +11,7 @@ export const gitConfig = {
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      title: <span className="font-caveat text-3xl leading-none">lazyskills</span>,
+      title: <span className="text-xl font-semibold tracking-tight">lazyskills</span>,
     },
     links: [
       {
