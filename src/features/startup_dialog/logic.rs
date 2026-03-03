@@ -50,16 +50,10 @@ pub fn handle_startup_dialog_key(
     _modifiers: KeyModifiers,
     mut show_toast: impl FnMut(String),
 ) -> bool {
-    let mut close_dialog = false;
     let mut pending_choice: Option<usize> = None;
 
     if let Some(state) = startup_dialog.as_mut() {
         match state {
-            StartupDialogState::Info { .. } => {
-                if matches!(key_code, KeyCode::Enter | KeyCode::Esc) {
-                    close_dialog = true;
-                }
-            }
             StartupDialogState::ChooseCommand {
                 selected_button,
                 error_message,
@@ -76,10 +70,6 @@ pub fn handle_startup_dialog_key(
                 _ => {}
             },
         }
-    }
-
-    if close_dialog {
-        *startup_dialog = None;
     }
 
     if let Some(choice) = pending_choice {

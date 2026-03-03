@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent as CrosstermKeyEvent, KeyModifiers};
-use ratkit::prelude::CoordinatorAction;
 use lazyskills::config::{persist_app_config, AppConfig, SkillsCommandMode, APP_CONFIG_PATH};
+use ratkit::prelude::CoordinatorAction;
 
 use super::state::ConfigState;
 

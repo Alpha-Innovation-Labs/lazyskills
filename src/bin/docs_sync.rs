@@ -428,24 +428,13 @@ fn diff_maps(
 
 fn ensure_root_meta(docs_root: &Path) -> Result<()> {
     let meta_path = docs_root.join("meta.json");
-    let mut pages: Vec<String> = vec![
+    let pages: Vec<String> = vec![
         "index".to_string(),
+        "overview".to_string(),
+        "skills-cli".to_string(),
+        "features".to_string(),
         "getting-started".to_string(),
-        "core".to_string(),
-        "reference".to_string(),
     ];
-
-    if meta_path.exists() {
-        let content = fs::read_to_string(&meta_path)
-            .with_context(|| format!("failed to read {}", meta_path.display()))?;
-        for page in ["index", "getting-started", "core", "reference"] {
-            if !content.contains(&format!("\"{page}\"")) {
-                pages.push(page.to_string());
-            }
-        }
-        pages.sort();
-        pages.dedup();
-    }
 
     fs::write(&meta_path, render_meta_json("Documentation", &pages))
         .with_context(|| format!("failed to write {}", meta_path.display()))?;

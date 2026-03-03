@@ -1,3 +1,4 @@
+use lazyskills::adapters::skills_sh::SkillDetail;
 use ratatui::{
     layout::Rect,
     style::{Color, Style},
@@ -6,7 +7,6 @@ use ratatui::{
     Frame,
 };
 use ratkit::primitives::pane::Pane;
-use lazyskills::adapters::skills_sh::SkillDetail;
 
 const CONSOLE_BG: Color = Color::Rgb(10, 14, 20);
 const CONSOLE_TEXT: Color = Color::Rgb(217, 225, 234);

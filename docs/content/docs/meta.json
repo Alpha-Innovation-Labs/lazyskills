@@ -1,9 +1,10 @@
 {
   "title": "Documentation",
   "pages": [
-    "core",
-    "getting-started",
     "index",
-    "reference"
+    "overview",
+    "skills-cli",
+    "features",
+    "getting-started"
   ]
 }

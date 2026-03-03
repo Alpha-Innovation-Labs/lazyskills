@@ -24,6 +24,7 @@ use ratkit::prelude::{
 use ratkit::primitives::dialog::{DialogActionsLayout, DialogShadow, DialogWrap};
 use ratkit::primitives::menu_bar::{MenuBar, MenuItem};
 use ratkit::primitives::pane::Pane;
+use ratkit::primitives::toast::{render_toasts, ToastManager};
 use ratkit::widgets::markdown_preview::{MarkdownEvent, SourceState};
 use ratkit::widgets::{Dialog, DialogWidget};
 use ratkit::widgets::{HotkeyFooter, HotkeyItem};
@@ -49,7 +50,7 @@ use crate::features::{
 };
 use lazyskills::config::{
     initialize_skills_command_config as initialize_app_config, load_user_config,
-    persist_user_config, AppConfig, FavoriteSkill, UserConfig, APP_CONFIG_PATH,
+    persist_user_config, AppConfig, FavoriteSkill, UserConfig,
 };
 use lazyskills::services::skills_command::{
     install_skill_from_slug_global, install_skill_from_slug_with_agents,
@@ -183,8 +184,7 @@ struct SkillPreviewApp {
     detail_area: Rect,
     markdown_inner_area: Rect,
     last_move_processed: Instant,
-    toast_message: Option<String>,
-    toast_expires_at: Option<Instant>,
+    toast_manager: ToastManager,
     show_hotkeys_modal: bool,
     delete_confirm_dialog: Option<DeleteConfirmDialogState>,
     install_modal: Option<InstallModalState>,
@@ -977,8 +977,7 @@ impl SkillPreviewApp {
             detail_area: Rect::default(),
             markdown_inner_area: Rect::default(),
             last_move_processed: Instant::now(),
-            toast_message: None,
-            toast_expires_at: None,
+            toast_manager: ToastManager::new(),
             show_hotkeys_modal: false,
             delete_confirm_dialog: None,
             install_modal: None,
@@ -1014,19 +1013,14 @@ impl SkillPreviewApp {
     }
 
     fn show_toast(&mut self, message: impl Into<String>) {
-        self.toast_message = Some(message.into());
-        self.toast_expires_at = Some(Instant::now() + Duration::from_secs(2));
+        self.toast_manager.success(message.into());
     }
 
     fn clear_expired_toast(&mut self) -> bool {
-        if let Some(expires_at) = self.toast_expires_at {
-            if Instant::now() >= expires_at {
-                self.toast_message = None;
-                self.toast_expires_at = None;
-                return true;
-            }
-        }
-        false
+        let before = self.toast_manager.get_active().len();
+        self.toast_manager.remove_expired();
+        let after = self.toast_manager.get_active().len();
+        before != after
     }
 
     fn update_pane_areas_from_grid(&mut self) {
@@ -2194,27 +2188,9 @@ impl CoordinatorApp for SkillPreviewApp {
                     },
                 );
             }
-
-            if let Some(message) = &self.toast_message {
-                if self.markdown_inner_area.height > 0 {
-                    let toast_width =
-                        (message.chars().count() as u16 + 2).min(self.markdown_inner_area.width);
-                    let toast_area = Rect {
-                        x: self.markdown_inner_area.x
-                            + self.markdown_inner_area.width.saturating_sub(toast_width) / 2,
-                        y: self.markdown_inner_area.y
-                            + self.markdown_inner_area.height.saturating_sub(1),
-                        width: toast_width,
-                        height: 1,
-                    };
-                    frame.render_widget(
-                        Paragraph::new(Line::from(format!(" {}", message)))
-                            .style(Style::default().fg(Color::Black).bg(Color::LightGreen)),
-                        toast_area,
-                    );
-                }
-            }
         }
+
+        render_toasts(frame, &self.toast_manager);
 
         if self.show_hotkeys_modal {
             let modal_width = root_area.width.min(68);
@@ -2262,20 +2238,6 @@ impl CoordinatorApp for SkillPreviewApp {
                 FocusPane::Preview => Color::Blue,
             };
             match state {
-                StartupDialogState::Info { title, message } => {
-                    let mut dialog = Dialog::success(title, message)
-                        .buttons(vec!["OK"])
-                        .width_percent(0.62)
-                        .height_percent(0.38)
-                        .border_color(focused_pane_border)
-                        .overlay(true)
-                        .content_padding(2, 1)
-                        .message_alignment(Alignment::Left)
-                        .wrap_mode(DialogWrap::WordTrim)
-                        .shadow(DialogShadow::Medium)
-                        .hide_footer();
-                    frame.render_widget(DialogWidget::new(&mut dialog), root_area);
-                }
                 StartupDialogState::ChooseCommand {
                     selected_button,
                     error_message,
@@ -2465,17 +2427,7 @@ fn initialize_startup_state() -> io::Result<(AppConfig, Option<StartupDialogStat
     }
 
     let startup_dialog = if startup.config.skills_command.global_command_verified {
-        Some(StartupDialogState::Info {
-            title: "Configuration".to_string(),
-            message: format!(
-                "Created {} and verified global '{}' ({})",
-                APP_CONFIG_PATH,
-                startup.config.skills_command.global_command,
-                startup
-                    .verified_version
-                    .unwrap_or_else(|| "version unknown".to_string())
-            ),
-        })
+        None
     } else {
         Some(StartupDialogState::ChooseCommand {
             selected_button: 0,
@@ -2487,6 +2439,11 @@ fn initialize_startup_state() -> io::Result<(AppConfig, Option<StartupDialogStat
 }
 
 fn main() -> io::Result<()> {
+    if std::env::args().any(|arg| arg == "--version" || arg == "-V") {
+        println!("{}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
     let (app_config, startup_dialog) = initialize_startup_state()?;
 
     let project_skills_nodes = load_project_skill_hierarchy()?;

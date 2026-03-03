@@ -1,18 +1,20 @@
 ---
 title: Lazyskills Docs
-description: Operator documentation for the lazyskills terminal workflow.
+description: Understand what lazyskills does and how its features work.
 ---
 
-Lazyskills is a terminal UI for browsing and managing reusable AI coding skills.
+Lazyskills is a terminal UI for discovering, previewing, installing, and managing AI skills.
 
-## Quick Start
+This documentation focuses on product behavior and feature usage.
+
+## What to Read First
+
+- [Overview](/docs/overview): what lazyskills is and who it is for.
+- [Skills CLI Integration](/docs/skills-cli): how lazyskills delegates install/remove operations.
+- [Features](/docs/features/search-discovery): the main UI capabilities.
+
+## Quick Local Run
 
 1. Install dependencies for this repository.
-2. Run `just docs-sync` to generate fresh reference pages from Rust source comments.
-3. Run `just docs` and open `/docs`.
-
-## Core Sections
-
-- `getting-started`: first-run setup and local development.
-- `core`: architecture and workflow design details.
-- `reference`: generated API and module docs.
+2. Run `just dev` to start the TUI.
+3. Run `just docs` to preview this docs site.

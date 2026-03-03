@@ -1,0 +1,22 @@
+---
+title: Skills CLI Integration
+description: Lazyskills uses the skills CLI in the background.
+---
+
+Lazyskills does not reimplement skill installation logic.
+
+Instead, it uses the configured `skills` command in the background for key operations.
+
+## Why this matters
+
+- You get behavior consistent with the official skills tooling.
+- Install/remove workflows stay compatible with your existing environment.
+- Lazyskills can focus on UX while the CLI remains source-of-truth for skill operations.
+
+## What runs through the CLI
+
+- installing skills,
+- removing skills,
+- global command verification during startup.
+
+If the command is missing or misconfigured, lazyskills prompts you to configure command mode at startup.

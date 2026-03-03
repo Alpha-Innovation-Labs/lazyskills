@@ -1,3 +1,4 @@
+use lazyskills::config::FavoriteSkill;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -6,7 +7,6 @@ use ratatui::{
     Frame,
 };
 use ratkit::primitives::pane::Pane;
-use lazyskills::config::FavoriteSkill;
 
 use crate::app::skills_tree::SkillTreeNode;
 use crate::features::{

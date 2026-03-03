@@ -36,7 +36,7 @@ pub fn build_widget(source: SourceState, show_toc: bool) -> MarkdownWidget<'stat
     .with_has_pane(false)
     .show_toc(show_toc)
     .show_scrollbar(true)
-    .show_statusline(true)
+    .show_statusline(false)
 }
 
 pub fn new_preview_state(
