@@ -148,7 +148,27 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground font-sans;
   }
+}
+
+#nd-sidebar,
+#nd-sidebar-mobile {
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+}
+
+#nd-docs-layout .prose,
+#nd-notebook-layout .prose,
+#nd-flux-layout .prose {
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+
+#nd-docs-layout .prose :where(h1, h2, h3, h4):not(:where([class~='not-prose'], [class~='not-prose'] *)),
+#nd-notebook-layout .prose :where(h1, h2, h3, h4):not(:where([class~='not-prose'], [class~='not-prose'] *)),
+#nd-flux-layout .prose :where(h1, h2, h3, h4):not(:where([class~='not-prose'], [class~='not-prose'] *)) {
+  font-weight: 400;
 }
