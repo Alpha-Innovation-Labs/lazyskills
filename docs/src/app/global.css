@@ -87,6 +87,20 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@keyframes home-logo-marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-home-logo-marquee {
+  animation: home-logo-marquee 36s linear infinite;
+}
+
 @theme inline {
   --font-sans: var(--font-geist);
   --font-mono: var(--font-geist-mono);
