@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Github } from 'lucide-react';
 import { Logo } from '@/components/logo';
 
-export function HomeNavbar() {
+export function Navbar() {
   return (
     <header className="border-b border-border/60 bg-background">
       <div className="mx-auto flex w-full max-w-[60rem] items-center justify-between px-6 py-3">
