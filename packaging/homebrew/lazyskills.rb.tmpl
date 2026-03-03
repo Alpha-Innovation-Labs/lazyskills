@@ -1,0 +1,36 @@
+class Lazyskills < Formula
+  desc "Terminal UI for browsing and managing AI coding skills"
+  homepage "https://github.com/Alpha-Innovation-Labs/lazyskills"
+  version "__VERSION__"
+  license "MIT"
+
+  on_macos do
+    if Hardware::CPU.arm?
+      url "__MACOS_ARM64_URL__"
+      sha256 "__MACOS_ARM64_SHA256__"
+    else
+      odie "No Homebrew binary is published for macOS Intel yet."
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.intel?
+      url "__LINUX_X64_URL__"
+      sha256 "__LINUX_X64_SHA256__"
+    else
+      odie "No Homebrew binary is published for Linux ARM yet."
+    end
+  end
+
+  def install
+    if OS.mac?
+      bin.install "lazyskills-aarch64-apple-darwin" => "lazyskills"
+    elsif OS.linux?
+      bin.install "lazyskills-x86_64-unknown-linux-gnu" => "lazyskills"
+    end
+  end
+
+  test do
+    assert_predicate bin/"lazyskills", :exist?
+  end
+end

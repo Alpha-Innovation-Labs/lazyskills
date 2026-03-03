@@ -1,0 +1,16 @@
+{
+  "name": "lazyskills",
+  "version": "0.1.1",
+  "description": "Terminal UI for browsing and managing AI coding skills",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alpha-Innovation-Labs/lazyskills.git"
+  },
+  "bin": {
+    "lazyskills": "bin/lazyskills.js"
+  },
+  "files": [
+    "bin"
+  ]
+}
