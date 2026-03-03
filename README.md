@@ -18,6 +18,16 @@
 just dev
 ```
 
+## Demo: VHS
+
+Run the demo recipe:
+
+```bash
+just demo-vhs
+```
+
+Current tape scope: it opens `lazyskills` and explicitly navigates the initial default-agent modal (selects `claude-code` and saves). The search/install/favorite steps are intentionally commented out for now.
+
 ## Release artifacts
 
 Release assets are expected to use these names:

@@ -1,0 +1,9 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "core",
+    "getting-started",
+    "index",
+    "reference"
+  ]
+}

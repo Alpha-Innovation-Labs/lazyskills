@@ -1,0 +1,14 @@
+{
+  "title": "Logic",
+  "pages": [
+    "flush-pending-search-detail-if-ready",
+    "flush-pending-search-refresh-if-ready",
+    "install-selected-search-skill-slug",
+    "queue-search-refresh",
+    "queue-selected-search-detail",
+    "refresh-search-results",
+    "selected-search-item",
+    "skill-slug",
+    "split-slug"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Logic",
+  "pages": [
+    "build-widget",
+    "clear-pending",
+    "flush-pending-preview-if-ready",
+    "new-preview-state",
+    "open-selected-file-immediate",
+    "queue-open-selected-file"
+  ]
+}

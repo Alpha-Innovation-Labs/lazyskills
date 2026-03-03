@@ -1,0 +1,24 @@
+{
+  "title": "Skills_sh",
+  "pages": [
+    "catalogpage",
+    "detailsource",
+    "fetch-catalog-page",
+    "fetch-catalog-page-cached-swr",
+    "fetch-homepage-all-time-leaderboard",
+    "fetch-homepage-all-time-leaderboard-cached-swr",
+    "fetch-search",
+    "fetch-search-cached-swr",
+    "fetch-skill-detail",
+    "fetch-skill-detail-cached-swr",
+    "fetch-skill-detail-with-rsc-url",
+    "installedon",
+    "new",
+    "searchresponse",
+    "securityaudit",
+    "skilldetail",
+    "skilllistitem",
+    "skillsmode",
+    "skillsshclient"
+  ]
+}

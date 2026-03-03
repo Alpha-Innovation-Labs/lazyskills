@@ -1,0 +1,11 @@
+{
+  "title": "Reference",
+  "pages": [
+    "adapters",
+    "app",
+    "config",
+    "crate",
+    "features",
+    "services"
+  ]
+}

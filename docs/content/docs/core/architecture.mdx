@@ -1,0 +1,22 @@
+---
+title: Architecture
+description: High-level structure of lazyskills runtime and features.
+---
+
+## Runtime Layers
+
+Lazyskills organizes logic into app, features, services, and adapters.
+
+## Feature Model
+
+- Feature state lives in `src/features/**/state.rs`.
+- Feature logic lives in `src/features/**/logic.rs`.
+- Rendering logic lives in `src/features/**/render.rs` where needed.
+
+## Service Model
+
+Services collect filesystem and external-command interactions used by multiple features.
+
+## Reference Generation
+
+Generated reference pages are written under `docs/content/docs/reference` from public Rust docs.

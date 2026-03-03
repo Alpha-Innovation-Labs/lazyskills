@@ -1,0 +1,13 @@
+{
+  "title": "Features",
+  "pages": [
+    "config",
+    "delete-confirm",
+    "detail",
+    "favorites",
+    "preview",
+    "search",
+    "startup-dialog",
+    "tree-nav"
+  ]
+}

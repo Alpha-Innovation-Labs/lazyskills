@@ -1,0 +1,12 @@
+{
+  "title": "Logic",
+  "pages": [
+    "contains-display-slug",
+    "display-slug-for-node",
+    "favorite-for-node",
+    "favorite-matches-search-slug",
+    "install-skill-for-node",
+    "rebuild-nodes",
+    "toggle"
+  ]
+}

@@ -1,0 +1,76 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/black.css';
+@import 'fumadocs-ui/css/preset.css';
+
+:root {
+  --color-fd-primary: oklch(0.78 0.14 211);
+  --color-fd-primary-foreground: oklch(0.12 0 0);
+  --color-fd-accent: oklch(0.9 0.07 211);
+  --color-fd-accent-foreground: oklch(0.12 0 0);
+  --color-fd-card: oklch(0.98 0 0);
+  --color-fd-border: oklch(0.83 0 0);
+}
+
+.dark {
+  --color-fd-primary: oklch(0.8 0.14 211);
+  --color-fd-primary-foreground: oklch(0.08 0 0);
+  --color-fd-accent: oklch(0.28 0.06 211);
+  --color-fd-accent-foreground: oklch(0.98 0 0);
+  --color-fd-card: oklch(0.15 0 0);
+  --color-fd-border: oklch(0.35 0 0);
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 8% -10%, color-mix(in oklab, white 9%, transparent), transparent 40%),
+    radial-gradient(circle at 92% 0%, color-mix(in oklab, white 6%, transparent), transparent 34%);
+  background-attachment: fixed;
+}
+
+@keyframes skills-write-in {
+  0% {
+    opacity: 0;
+    transform: rotate(-10deg) translateX(-10px);
+    clip-path: inset(0 100% 0 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: rotate(-6deg) translateX(0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.font-caveat {
+  font-family: var(--font-caveat), cursive;
+}
+
+@media (min-width: 768px) {
+  header nav {
+    max-width: 64rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  header a[href='/docs'],
+  header a[href='https://github.com/Alpha-Innovation-Labs/lazyskills'] {
+    border: 1px solid color-mix(in oklab, white 75%, transparent);
+    border-radius: 0;
+    color: white;
+    padding: 0.35rem 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  header a[href='/docs'] {
+    margin-right: 0.5rem;
+  }
+
+  header button[aria-label='Toggle Theme'] {
+    order: 99;
+    margin-left: 0.5rem;
+  }
+}

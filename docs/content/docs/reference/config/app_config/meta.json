@@ -1,0 +1,15 @@
+{
+  "title": "App_config",
+  "pages": [
+    "app-config-path",
+    "appconfig",
+    "initialize-skills-command-config",
+    "load-app-config",
+    "persist-app-config",
+    "skillscommandconfig",
+    "skillscommandmode",
+    "startupconfigoutcome",
+    "verify-global-skills-command",
+    "write-app-config"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "title": "Skills_tree",
+  "pages": [
+    "collect-expanded-skill-paths",
+    "extract-skill-name-from-frontmatter",
+    "fallback-title-from-path",
+    "first-skill-file",
+    "global-agents-skill-root",
+    "load-global-skill-hierarchy",
+    "load-project-skill-hierarchy",
+    "load-skill-slug-from-lock",
+    "load-source-from-path",
+    "preview-relative-to-skills",
+    "provider-global-skill-roots",
+    "skill-node-at-path",
+    "skill-remove-target-from-path",
+    "skilltreenode"
+  ]
+}

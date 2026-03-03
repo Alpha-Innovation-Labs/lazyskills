@@ -1,0 +1,13 @@
+{
+  "title": "Logic",
+  "pages": [
+    "collapse-selected-skill",
+    "collect-visible-skill-paths",
+    "ensure-skill-selection-visible",
+    "expand-selected-skill",
+    "select-next-skill",
+    "select-prev-skill",
+    "select-skill-by-visible-row",
+    "visible-skill-paths"
+  ]
+}

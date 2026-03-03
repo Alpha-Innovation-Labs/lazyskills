@@ -1,0 +1,10 @@
+{
+  "title": "Logic",
+  "pages": [
+    "fetch-project-global-detail-now",
+    "flush-pending-project-global-detail-if-ready",
+    "queue-project-global-detail-refresh",
+    "selected-project-global-slug",
+    "toggle-project-global-detail-pane"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "title": "Skills_command",
+  "pages": [
+    "install-global-skills-cli",
+    "install-skill-from-slug",
+    "install-skill-from-slug-global",
+    "install-skill-from-slug-with-agents",
+    "patch-project-lock-after-remove",
+    "remove-skill-noninteractive",
+    "remove-skill-noninteractive-scoped",
+    "run-configured-skills-command",
+    "verify-global-skills-command"
+  ]
+}
