@@ -6,5 +6,5 @@ docs:
     set -euo pipefail
 
     mkdir -p logs
-    bun install --cwd docs
+    pnpm install --dir docs
     bun run --cwd docs dev 2>&1 | tee logs/docs.log

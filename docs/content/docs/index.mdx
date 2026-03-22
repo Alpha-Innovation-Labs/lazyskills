@@ -1,20 +1,41 @@
 ---
 title: Lazyskills Docs
-description: Understand what lazyskills does and how its features work.
+description: Understand what lazyskills is, why it exists, and how to use it.
 ---
 
-Lazyskills is a terminal UI for discovering, previewing, installing, and managing AI skills.
+Lazyskills is a TUI for discovering, understanding, installing, and managing AI coding skills for people who want a faster way to work with skills across projects without manually digging through folders, markdown files, and install commands.
 
-This documentation focuses on product behavior and feature usage.
+## Why Lazyskills Exists
 
-## What to Read First
+- Skills are useful only if you can find the right one, inspect it quickly, and install it safely.
+- Lazyskills gives you one keyboard-driven place to browse available skills, read their contents, and manage them across local and project scopes.
+- It keeps install and remove operations aligned with the existing `skills` CLI instead of inventing a separate workflow.
 
-- [Overview](/docs/overview): what lazyskills is and who it is for.
-- [Skills CLI Integration](/docs/skills-cli): how lazyskills delegates install/remove operations.
-- [Features](/docs/features/search-discovery): the main UI capabilities.
+## How It Works
 
-## Quick Local Run
+1. Browse skills from local, project, and remote sources.
+2. Preview markdown and metadata before making changes.
+3. Install or remove skills through the configured `skills` command.
+4. Revisit frequently used skills through favorites and faster navigation.
 
-1. Install dependencies for this repository.
-2. Run `just dev` to start the TUI.
-3. Run `just docs` to preview this docs site.
+## Start Here
+
+If you are new to lazyskills, read these pages in order:
+
+1. [Overview](/docs/overview) for the product mental model.
+2. [Skills CLI Integration](/docs/skills-cli) to understand what lazyskills does itself versus what it delegates.
+3. [Installation](/docs/getting-started/installation) to get the tool running.
+
+## Common Tasks
+
+- [Find and filter skills](/docs/features/search-discovery)
+- [Inspect preview and detail views](/docs/features/preview-detail)
+- [Install or remove a skill](/docs/features/install-remove)
+- [Manage favorites](/docs/features/favorites)
+- [Adjust configuration](/docs/features/configuration)
+
+## Choose Your Path
+
+- New user: start with [Overview](/docs/overview) and [Installation](/docs/getting-started/installation).
+- Daily user: jump into [Features](/docs/features/search-discovery) to learn the main workflows.
+- Contributor or maintainer: use the generated [Reference](/docs/reference).

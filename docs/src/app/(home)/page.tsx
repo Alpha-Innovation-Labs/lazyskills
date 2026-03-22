@@ -65,11 +65,20 @@ export default function HomePage() {
           <InstallCommandBlock options={INSTALL_OPTIONS} />
 
           <div className="mt-8 space-y-4 sm:mt-10 sm:space-y-5">
-            <div className="overflow-hidden">
+            <div className="overflow-hidden rounded-xl border border-fd-border/80 bg-fd-card shadow-[0_28px_80px_rgba(0,0,0,0.18)]">
+              <div className="flex items-center gap-2 border-b border-fd-border/80 bg-fd-muted/30 px-4 py-3">
+                <span className="h-3 w-3 rounded-full bg-[#ff6b6b]" />
+                <span className="h-3 w-3 rounded-full bg-[#ffd166]" />
+                <span className="h-3 w-3 rounded-full bg-[#06d6a0]" />
+                <span className="ml-3 font-mono text-[11px] uppercase tracking-[0.28em] text-fd-muted-foreground/80">
+                  Lazyskills
+                </span>
+              </div>
+
               <img
                 src="/media/lazyskills-demo.gif"
                 alt="Lazyskills demo showing skill discovery in the terminal UI"
-                className="w-full"
+                className="w-full bg-fd-card"
               />
             </div>
 
