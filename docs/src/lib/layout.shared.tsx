@@ -1,5 +1,6 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import { BookOpen, Github } from 'lucide-react';
+import { Logo } from '@/components/logo';
 
 // fill this with your actual GitHub info, for example:
 export const gitConfig = {
@@ -11,7 +12,7 @@ export const gitConfig = {
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      title: <span className="font-caveat text-3xl leading-none">lazyskills</span>,
+      title: <Logo className="h-5" />,
     },
     links: [
       {

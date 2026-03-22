@@ -22,7 +22,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
       }}
     >
       <div className={isHelloWorldPage ? '[&_*]:text-red-600 dark:[&_*]:text-red-400' : undefined}>
-        <DocsTitle>{page.data.title}</DocsTitle>
+        <DocsTitle className="font-normal">{page.data.title}</DocsTitle>
         <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
         <DocsBody>
           <MDX
