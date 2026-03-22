@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "overview",
+    "hello-world",
     "skills-cli",
     "features",
     "getting-started"
