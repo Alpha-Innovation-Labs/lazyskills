@@ -1,1 +1,0 @@
-../../.nexus/ai_harness/commands/nexus-code-with-ralph.md

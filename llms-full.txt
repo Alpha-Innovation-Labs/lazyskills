@@ -1,0 +1,4015 @@
+# Lazyskills Docs
+
+
+
+Lazyskills is a terminal UI for browsing and managing reusable AI coding skills.
+
+Quick Start [#quick-start]
+
+1. Install dependencies for this repository.
+2. Run `just docs-sync` to generate fresh reference pages from Rust source comments.
+3. Run `just docs` and open `/docs`.
+
+Core Sections [#core-sections]
+
+* `getting-started`: first-run setup and local development.
+* `core`: architecture and workflow design details.
+* `reference`: generated API and module docs.
+
+
+# Architecture
+
+
+
+Runtime Layers [#runtime-layers]
+
+Lazyskills organizes logic into app, features, services, and adapters.
+
+Feature Model [#feature-model]
+
+* Feature state lives in `src/features/**/state.rs`.
+* Feature logic lives in `src/features/**/logic.rs`.
+* Rendering logic lives in `src/features/**/render.rs` where needed.
+
+Service Model [#service-model]
+
+Services collect filesystem and external-command interactions used by multiple features.
+
+Reference Generation [#reference-generation]
+
+Generated reference pages are written under `docs/content/docs/reference` from public Rust docs.
+
+
+# Common Commands
+
+
+
+Development [#development]
+
+* `just dev` runs the terminal UI locally.
+* `just check` compiles the Rust project without building release artifacts.
+
+Documentation [#documentation]
+
+* `just docs` starts the docs application from `docs/`.
+* `just docs-sync` regenerates the reference pages from Rust source comments.
+* `just docs-sync-check` fails when generated pages are stale.
+* `just docs-gh-pub` exports and publishes static docs to `gh-pages`.
+
+
+# Installation
+
+
+
+Requirements [#requirements]
+
+* Rust toolchain installed
+* `just` command available
+* `bun` available for docs tasks
+
+Install [#install]
+
+```bash
+cargo install --path .
+```
+
+Verify [#verify]
+
+```bash
+lazyskills --help
+```
+
+
+# skills_sh
+
+
+
+Signature [#signature]
+
+```rust
+pub mod skills_sh;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* No related public items in this module.
+
+
+# skills_tree
+
+
+
+Signature [#signature]
+
+```rust
+pub mod skills_tree;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* No related public items in this module.
+
+
+# app_config
+
+
+
+Signature [#signature]
+
+```rust
+pub mod app_config;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [default\_paths](./default-paths)
+* [user\_config](./user-config)
+
+
+# default_paths
+
+
+
+Signature [#signature]
+
+```rust
+pub mod default_paths;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [app\_config](./app-config)
+* [user\_config](./user-config)
+
+
+# user_config
+
+
+
+Signature [#signature]
+
+```rust
+pub mod user_config;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [app\_config](./app-config)
+* [default\_paths](./default-paths)
+
+
+# adapters
+
+
+
+Signature [#signature]
+
+```rust
+pub mod adapters;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config](./config)
+* [services](./services)
+
+
+# config
+
+
+
+Signature [#signature]
+
+```rust
+pub mod config;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [adapters](./adapters)
+* [services](./services)
+
+
+# services
+
+
+
+Signature [#signature]
+
+```rust
+pub mod services;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [adapters](./adapters)
+* [config](./config)
+
+
+# config
+
+
+
+Signature [#signature]
+
+```rust
+pub mod config;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [delete\_confirm](./delete-confirm)
+* [detail](./detail)
+* [favorites](./favorites)
+* [preview](./preview)
+* [search](./search)
+* [startup\_dialog](./startup-dialog)
+* [tree\_nav](./tree-nav)
+
+
+# delete_confirm
+
+
+
+Signature [#signature]
+
+```rust
+pub mod delete_confirm;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config](./config)
+* [detail](./detail)
+* [favorites](./favorites)
+* [preview](./preview)
+* [search](./search)
+* [startup\_dialog](./startup-dialog)
+* [tree\_nav](./tree-nav)
+
+
+# detail
+
+
+
+Signature [#signature]
+
+```rust
+pub mod detail;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config](./config)
+* [delete\_confirm](./delete-confirm)
+* [favorites](./favorites)
+* [preview](./preview)
+* [search](./search)
+* [startup\_dialog](./startup-dialog)
+* [tree\_nav](./tree-nav)
+
+
+# favorites
+
+
+
+Signature [#signature]
+
+```rust
+pub mod favorites;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config](./config)
+* [delete\_confirm](./delete-confirm)
+* [detail](./detail)
+* [preview](./preview)
+* [search](./search)
+* [startup\_dialog](./startup-dialog)
+* [tree\_nav](./tree-nav)
+
+
+# preview
+
+
+
+Signature [#signature]
+
+```rust
+pub mod preview;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config](./config)
+* [delete\_confirm](./delete-confirm)
+* [detail](./detail)
+* [favorites](./favorites)
+* [search](./search)
+* [startup\_dialog](./startup-dialog)
+* [tree\_nav](./tree-nav)
+
+
+# search
+
+
+
+Signature [#signature]
+
+```rust
+pub mod search;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config](./config)
+* [delete\_confirm](./delete-confirm)
+* [detail](./detail)
+* [favorites](./favorites)
+* [preview](./preview)
+* [startup\_dialog](./startup-dialog)
+* [tree\_nav](./tree-nav)
+
+
+# startup_dialog
+
+
+
+Signature [#signature]
+
+```rust
+pub mod startup_dialog;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config](./config)
+* [delete\_confirm](./delete-confirm)
+* [detail](./detail)
+* [favorites](./favorites)
+* [preview](./preview)
+* [search](./search)
+* [tree\_nav](./tree-nav)
+
+
+# tree_nav
+
+
+
+Signature [#signature]
+
+```rust
+pub mod tree_nav;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config](./config)
+* [delete\_confirm](./delete-confirm)
+* [detail](./detail)
+* [favorites](./favorites)
+* [preview](./preview)
+* [search](./search)
+* [startup\_dialog](./startup-dialog)
+
+
+# skills_cache
+
+
+
+Signature [#signature]
+
+```rust
+pub mod skills_cache;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [skills\_command](./skills-command)
+
+
+# skills_command
+
+
+
+Signature [#signature]
+
+```rust
+pub mod skills_command;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [skills\_cache](./skills-cache)
+
+
+# collect_expanded_skill_paths
+
+
+
+Signature [#signature]
+
+```rust
+pub fn collect_expanded_skill_paths(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# extract_skill_name_from_frontmatter
+
+
+
+Signature [#signature]
+
+```rust
+pub fn extract_skill_name_from_frontmatter(path: &Path) -> Option<String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# fallback_title_from_path
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fallback_title_from_path(path: &Path) -> String
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# first_skill_file
+
+
+
+Signature [#signature]
+
+```rust
+pub fn first_skill_file(nodes: &[SkillTreeNode]) -> Option<PathBuf>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# global_agents_skill_root
+
+
+
+Signature [#signature]
+
+```rust
+pub fn global_agents_skill_root() -> PathBuf
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# load_global_skill_hierarchy
+
+
+
+Signature [#signature]
+
+```rust
+pub fn load_global_skill_hierarchy() -> io::Result<Vec<SkillTreeNode>>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# load_project_skill_hierarchy
+
+
+
+Signature [#signature]
+
+```rust
+pub fn load_project_skill_hierarchy() -> io::Result<Vec<SkillTreeNode>>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# load_skill_slug_from_lock
+
+
+
+Signature [#signature]
+
+```rust
+pub fn load_skill_slug_from_lock(skill_file: &Path, skill_name: &str) -> Option<String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# load_source_from_path
+
+
+
+Signature [#signature]
+
+```rust
+pub fn load_source_from_path(path: impl AsRef<Path>) -> io::Result<SourceState>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# preview_relative_to_skills
+
+
+
+Signature [#signature]
+
+```rust
+pub fn preview_relative_to_skills(path: &Path) -> String
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# provider_global_skill_roots
+
+
+
+Signature [#signature]
+
+```rust
+pub fn provider_global_skill_roots() -> Vec<(String, PathBuf)>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# skill_node_at_path
+
+
+
+Signature [#signature]
+
+```rust
+pub fn skill_node_at_path<'a>(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# skill_remove_target_from_path
+
+
+
+Signature [#signature]
+
+```rust
+pub fn skill_remove_target_from_path(path: &Path) -> String
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillTreeNode](./skilltreenode)
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+
+
+# SkillTreeNode
+
+
+
+Signature [#signature]
+
+```rust
+pub struct SkillTreeNode
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [collect\_expanded\_skill\_paths](./collect-expanded-skill-paths)
+* [extract\_skill\_name\_from\_frontmatter](./extract-skill-name-from-frontmatter)
+* [fallback\_title\_from\_path](./fallback-title-from-path)
+* [first\_skill\_file](./first-skill-file)
+* [global\_agents\_skill\_root](./global-agents-skill-root)
+* [load\_global\_skill\_hierarchy](./load-global-skill-hierarchy)
+* [load\_project\_skill\_hierarchy](./load-project-skill-hierarchy)
+* [load\_skill\_slug\_from\_lock](./load-skill-slug-from-lock)
+* [load\_source\_from\_path](./load-source-from-path)
+* [preview\_relative\_to\_skills](./preview-relative-to-skills)
+* [provider\_global\_skill\_roots](./provider-global-skill-roots)
+* [skill\_node\_at\_path](./skill-node-at-path)
+* [skill\_remove\_target\_from\_path](./skill-remove-target-from-path)
+
+
+# CatalogPage
+
+
+
+Signature [#signature]
+
+```rust
+pub struct CatalogPage
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# DetailSource
+
+
+
+Signature [#signature]
+
+```rust
+pub enum DetailSource
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# fetch_catalog_page_cached_swr
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_catalog_page_cached_swr(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# fetch_catalog_page
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_catalog_page(&self, mode: SkillsMode, page: u64) -> Result<CatalogPage>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# fetch_homepage_all_time_leaderboard_cached_swr
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_homepage_all_time_leaderboard_cached_swr(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# fetch_homepage_all_time_leaderboard
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_homepage_all_time_leaderboard(&self, limit: usize) -> Result<Vec<SkillListItem>>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# fetch_search_cached_swr
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_search_cached_swr(&self, query: &str, limit: u64) -> Result<SearchResponse>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# fetch_search
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_search(&self, query: &str, limit: u64) -> Result<SearchResponse>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# fetch_skill_detail_cached_swr
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_skill_detail_cached_swr(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# fetch_skill_detail_with_rsc_url
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_skill_detail_with_rsc_url(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [new](./new)
+
+
+# fetch_skill_detail
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_skill_detail(&self, owner: &str, repo: &str, skill: &str) -> Result<SkillDetail>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# InstalledOn
+
+
+
+Signature [#signature]
+
+```rust
+pub struct InstalledOn
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# new
+
+
+
+Signature [#signature]
+
+```rust
+pub fn new() -> Result<Self>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+
+
+# SearchResponse
+
+
+
+Signature [#signature]
+
+```rust
+pub struct SearchResponse
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# SecurityAudit
+
+
+
+Signature [#signature]
+
+```rust
+pub struct SecurityAudit
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# SkillDetail
+
+
+
+Signature [#signature]
+
+```rust
+pub struct SkillDetail
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# SkillListItem
+
+
+
+Signature [#signature]
+
+```rust
+pub struct SkillListItem
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillsMode](./skillsmode)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# SkillsMode
+
+
+
+Signature [#signature]
+
+```rust
+pub enum SkillsMode
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsShClient](./skillsshclient)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# SkillsShClient
+
+
+
+Signature [#signature]
+
+```rust
+pub struct SkillsShClient
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [CatalogPage](./catalogpage)
+* [DetailSource](./detailsource)
+* [InstalledOn](./installedon)
+* [SearchResponse](./searchresponse)
+* [SecurityAudit](./securityaudit)
+* [SkillDetail](./skilldetail)
+* [SkillListItem](./skilllistitem)
+* [SkillsMode](./skillsmode)
+* [fetch\_catalog\_page](./fetch-catalog-page)
+* [fetch\_catalog\_page\_cached\_swr](./fetch-catalog-page-cached-swr)
+* [fetch\_homepage\_all\_time\_leaderboard](./fetch-homepage-all-time-leaderboard)
+* [fetch\_homepage\_all\_time\_leaderboard\_cached\_swr](./fetch-homepage-all-time-leaderboard-cached-swr)
+* [fetch\_search](./fetch-search)
+* [fetch\_search\_cached\_swr](./fetch-search-cached-swr)
+* [fetch\_skill\_detail](./fetch-skill-detail)
+* [fetch\_skill\_detail\_cached\_swr](./fetch-skill-detail-cached-swr)
+* [fetch\_skill\_detail\_with\_rsc\_url](./fetch-skill-detail-with-rsc-url)
+* [new](./new)
+
+
+# default_user_data_dir
+
+
+
+Signature [#signature]
+
+```rust
+pub fn default_user_data_dir() -> io::Result<PathBuf>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* No related public items in this module.
+
+
+# app_config_path
+
+
+
+Signature [#signature]
+
+```rust
+pub fn app_config_path() -> PathBuf
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [AppConfig](./appconfig)
+* [SkillsCommandConfig](./skillscommandconfig)
+* [SkillsCommandMode](./skillscommandmode)
+* [StartupConfigOutcome](./startupconfigoutcome)
+* [initialize\_skills\_command\_config](./initialize-skills-command-config)
+* [load\_app\_config](./load-app-config)
+* [persist\_app\_config](./persist-app-config)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+* [write\_app\_config](./write-app-config)
+
+
+# AppConfig
+
+
+
+Signature [#signature]
+
+```rust
+pub struct AppConfig
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillsCommandConfig](./skillscommandconfig)
+* [SkillsCommandMode](./skillscommandmode)
+* [StartupConfigOutcome](./startupconfigoutcome)
+* [app\_config\_path](./app-config-path)
+* [initialize\_skills\_command\_config](./initialize-skills-command-config)
+* [load\_app\_config](./load-app-config)
+* [persist\_app\_config](./persist-app-config)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+* [write\_app\_config](./write-app-config)
+
+
+# initialize_skills_command_config
+
+
+
+Signature [#signature]
+
+```rust
+pub fn initialize_skills_command_config() -> io::Result<StartupConfigOutcome>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [AppConfig](./appconfig)
+* [SkillsCommandConfig](./skillscommandconfig)
+* [SkillsCommandMode](./skillscommandmode)
+* [StartupConfigOutcome](./startupconfigoutcome)
+* [app\_config\_path](./app-config-path)
+* [load\_app\_config](./load-app-config)
+* [persist\_app\_config](./persist-app-config)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+* [write\_app\_config](./write-app-config)
+
+
+# load_app_config
+
+
+
+Signature [#signature]
+
+```rust
+pub fn load_app_config() -> io::Result<AppConfig>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [AppConfig](./appconfig)
+* [SkillsCommandConfig](./skillscommandconfig)
+* [SkillsCommandMode](./skillscommandmode)
+* [StartupConfigOutcome](./startupconfigoutcome)
+* [app\_config\_path](./app-config-path)
+* [initialize\_skills\_command\_config](./initialize-skills-command-config)
+* [persist\_app\_config](./persist-app-config)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+* [write\_app\_config](./write-app-config)
+
+
+# persist_app_config
+
+
+
+Signature [#signature]
+
+```rust
+pub fn persist_app_config(config: &AppConfig) -> io::Result<()>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [AppConfig](./appconfig)
+* [SkillsCommandConfig](./skillscommandconfig)
+* [SkillsCommandMode](./skillscommandmode)
+* [StartupConfigOutcome](./startupconfigoutcome)
+* [app\_config\_path](./app-config-path)
+* [initialize\_skills\_command\_config](./initialize-skills-command-config)
+* [load\_app\_config](./load-app-config)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+* [write\_app\_config](./write-app-config)
+
+
+# SkillsCommandConfig
+
+
+
+Signature [#signature]
+
+```rust
+pub struct SkillsCommandConfig
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [AppConfig](./appconfig)
+* [SkillsCommandMode](./skillscommandmode)
+* [StartupConfigOutcome](./startupconfigoutcome)
+* [app\_config\_path](./app-config-path)
+* [initialize\_skills\_command\_config](./initialize-skills-command-config)
+* [load\_app\_config](./load-app-config)
+* [persist\_app\_config](./persist-app-config)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+* [write\_app\_config](./write-app-config)
+
+
+# SkillsCommandMode
+
+
+
+Signature [#signature]
+
+```rust
+pub enum SkillsCommandMode
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [AppConfig](./appconfig)
+* [SkillsCommandConfig](./skillscommandconfig)
+* [StartupConfigOutcome](./startupconfigoutcome)
+* [app\_config\_path](./app-config-path)
+* [initialize\_skills\_command\_config](./initialize-skills-command-config)
+* [load\_app\_config](./load-app-config)
+* [persist\_app\_config](./persist-app-config)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+* [write\_app\_config](./write-app-config)
+
+
+# StartupConfigOutcome
+
+
+
+Signature [#signature]
+
+```rust
+pub struct StartupConfigOutcome
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [AppConfig](./appconfig)
+* [SkillsCommandConfig](./skillscommandconfig)
+* [SkillsCommandMode](./skillscommandmode)
+* [app\_config\_path](./app-config-path)
+* [initialize\_skills\_command\_config](./initialize-skills-command-config)
+* [load\_app\_config](./load-app-config)
+* [persist\_app\_config](./persist-app-config)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+* [write\_app\_config](./write-app-config)
+
+
+# verify_global_skills_command
+
+
+
+Signature [#signature]
+
+```rust
+pub fn verify_global_skills_command(cfg: &SkillsCommandConfig) -> Option<String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [AppConfig](./appconfig)
+* [SkillsCommandConfig](./skillscommandconfig)
+* [SkillsCommandMode](./skillscommandmode)
+* [StartupConfigOutcome](./startupconfigoutcome)
+* [app\_config\_path](./app-config-path)
+* [initialize\_skills\_command\_config](./initialize-skills-command-config)
+* [load\_app\_config](./load-app-config)
+* [persist\_app\_config](./persist-app-config)
+* [write\_app\_config](./write-app-config)
+
+
+# write_app_config
+
+
+
+Signature [#signature]
+
+```rust
+pub fn write_app_config(path: &Path, config: &AppConfig) -> io::Result<()>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [AppConfig](./appconfig)
+* [SkillsCommandConfig](./skillscommandconfig)
+* [SkillsCommandMode](./skillscommandmode)
+* [StartupConfigOutcome](./startupconfigoutcome)
+* [app\_config\_path](./app-config-path)
+* [initialize\_skills\_command\_config](./initialize-skills-command-config)
+* [load\_app\_config](./load-app-config)
+* [persist\_app\_config](./persist-app-config)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+
+
+# FavoriteSkill
+
+
+
+Signature [#signature]
+
+```rust
+pub struct FavoriteSkill
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [UiPreferences](./uipreferences)
+* [UserConfig](./userconfig)
+* [load\_user\_config](./load-user-config)
+* [persist\_user\_config](./persist-user-config)
+* [user\_config\_path](./user-config-path)
+
+
+# load_user_config
+
+
+
+Signature [#signature]
+
+```rust
+pub fn load_user_config() -> io::Result<UserConfig>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [FavoriteSkill](./favoriteskill)
+* [UiPreferences](./uipreferences)
+* [UserConfig](./userconfig)
+* [persist\_user\_config](./persist-user-config)
+* [user\_config\_path](./user-config-path)
+
+
+# persist_user_config
+
+
+
+Signature [#signature]
+
+```rust
+pub fn persist_user_config(config: &UserConfig) -> io::Result<()>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [FavoriteSkill](./favoriteskill)
+* [UiPreferences](./uipreferences)
+* [UserConfig](./userconfig)
+* [load\_user\_config](./load-user-config)
+* [user\_config\_path](./user-config-path)
+
+
+# UiPreferences
+
+
+
+Signature [#signature]
+
+```rust
+pub struct UiPreferences
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [FavoriteSkill](./favoriteskill)
+* [UserConfig](./userconfig)
+* [load\_user\_config](./load-user-config)
+* [persist\_user\_config](./persist-user-config)
+* [user\_config\_path](./user-config-path)
+
+
+# user_config_path
+
+
+
+Signature [#signature]
+
+```rust
+pub fn user_config_path() -> io::Result<PathBuf>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [FavoriteSkill](./favoriteskill)
+* [UiPreferences](./uipreferences)
+* [UserConfig](./userconfig)
+* [load\_user\_config](./load-user-config)
+* [persist\_user\_config](./persist-user-config)
+
+
+# UserConfig
+
+
+
+Signature [#signature]
+
+```rust
+pub struct UserConfig
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [FavoriteSkill](./favoriteskill)
+* [UiPreferences](./uipreferences)
+* [load\_user\_config](./load-user-config)
+* [persist\_user\_config](./persist-user-config)
+* [user\_config\_path](./user-config-path)
+
+
+# logic
+
+
+
+Signature [#signature]
+
+```rust
+pub mod logic;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [state](./state)
+
+
+# state
+
+
+
+Signature [#signature]
+
+```rust
+pub mod state;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+
+
+# logic
+
+
+
+Signature [#signature]
+
+```rust
+pub mod logic;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [state](./state)
+
+
+# state
+
+
+
+Signature [#signature]
+
+```rust
+pub mod state;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+
+
+# logic
+
+
+
+Signature [#signature]
+
+```rust
+pub mod logic;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [render](./render)
+* [state](./state)
+
+
+# render
+
+
+
+Signature [#signature]
+
+```rust
+pub mod render;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+* [state](./state)
+
+
+# state
+
+
+
+Signature [#signature]
+
+```rust
+pub mod state;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+* [render](./render)
+
+
+# logic
+
+
+
+Signature [#signature]
+
+```rust
+pub mod logic;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [state](./state)
+
+
+# state
+
+
+
+Signature [#signature]
+
+```rust
+pub mod state;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+
+
+# logic
+
+
+
+Signature [#signature]
+
+```rust
+pub mod logic;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [state](./state)
+
+
+# state
+
+
+
+Signature [#signature]
+
+```rust
+pub mod state;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+
+
+# logic
+
+
+
+Signature [#signature]
+
+```rust
+pub mod logic;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [state](./state)
+
+
+# state
+
+
+
+Signature [#signature]
+
+```rust
+pub mod state;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+
+
+# logic
+
+
+
+Signature [#signature]
+
+```rust
+pub mod logic;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [render](./render)
+* [state](./state)
+
+
+# render
+
+
+
+Signature [#signature]
+
+```rust
+pub mod render;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+* [state](./state)
+
+
+# state
+
+
+
+Signature [#signature]
+
+```rust
+pub mod state;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+* [render](./render)
+
+
+# read_json
+
+
+
+Signature [#signature]
+
+```rust
+pub fn read_json<T: DeserializeOwned>(namespace: &str, key: &str) -> Option<T>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [write\_json](./write-json)
+
+
+# write_json
+
+
+
+Signature [#signature]
+
+```rust
+pub fn write_json<T: Serialize>(namespace: &str, key: &str, value: &T) -> std::io::Result<()>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [read\_json](./read-json)
+
+
+# logic
+
+
+
+Signature [#signature]
+
+```rust
+pub mod logic;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [state](./state)
+
+
+# state
+
+
+
+Signature [#signature]
+
+```rust
+pub mod state;
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [logic](./logic)
+
+
+# install_global_skills_cli
+
+
+
+Signature [#signature]
+
+```rust
+pub fn install_global_skills_cli() -> Result<(), String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [install\_skill\_from\_slug](./install-skill-from-slug)
+* [install\_skill\_from\_slug\_global](./install-skill-from-slug-global)
+* [install\_skill\_from\_slug\_with\_agents](./install-skill-from-slug-with-agents)
+* [patch\_project\_lock\_after\_remove](./patch-project-lock-after-remove)
+* [remove\_skill\_noninteractive](./remove-skill-noninteractive)
+* [remove\_skill\_noninteractive\_scoped](./remove-skill-noninteractive-scoped)
+* [run\_configured\_skills\_command](./run-configured-skills-command)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+
+
+# install_skill_from_slug_global
+
+
+
+Signature [#signature]
+
+```rust
+pub fn install_skill_from_slug_global(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [install\_global\_skills\_cli](./install-global-skills-cli)
+* [install\_skill\_from\_slug](./install-skill-from-slug)
+* [install\_skill\_from\_slug\_with\_agents](./install-skill-from-slug-with-agents)
+* [patch\_project\_lock\_after\_remove](./patch-project-lock-after-remove)
+* [remove\_skill\_noninteractive](./remove-skill-noninteractive)
+* [remove\_skill\_noninteractive\_scoped](./remove-skill-noninteractive-scoped)
+* [run\_configured\_skills\_command](./run-configured-skills-command)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+
+
+# install_skill_from_slug_with_agents
+
+
+
+Signature [#signature]
+
+```rust
+pub fn install_skill_from_slug_with_agents(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [install\_global\_skills\_cli](./install-global-skills-cli)
+* [install\_skill\_from\_slug](./install-skill-from-slug)
+* [install\_skill\_from\_slug\_global](./install-skill-from-slug-global)
+* [patch\_project\_lock\_after\_remove](./patch-project-lock-after-remove)
+* [remove\_skill\_noninteractive](./remove-skill-noninteractive)
+* [remove\_skill\_noninteractive\_scoped](./remove-skill-noninteractive-scoped)
+* [run\_configured\_skills\_command](./run-configured-skills-command)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+
+
+# install_skill_from_slug
+
+
+
+Signature [#signature]
+
+```rust
+pub fn install_skill_from_slug(config: &SkillsCommandConfig, slug: &str) -> Result<String, String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [install\_global\_skills\_cli](./install-global-skills-cli)
+* [install\_skill\_from\_slug\_global](./install-skill-from-slug-global)
+* [install\_skill\_from\_slug\_with\_agents](./install-skill-from-slug-with-agents)
+* [patch\_project\_lock\_after\_remove](./patch-project-lock-after-remove)
+* [remove\_skill\_noninteractive](./remove-skill-noninteractive)
+* [remove\_skill\_noninteractive\_scoped](./remove-skill-noninteractive-scoped)
+* [run\_configured\_skills\_command](./run-configured-skills-command)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+
+
+# patch_project_lock_after_remove
+
+
+
+Signature [#signature]
+
+```rust
+pub fn patch_project_lock_after_remove(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [install\_global\_skills\_cli](./install-global-skills-cli)
+* [install\_skill\_from\_slug](./install-skill-from-slug)
+* [install\_skill\_from\_slug\_global](./install-skill-from-slug-global)
+* [install\_skill\_from\_slug\_with\_agents](./install-skill-from-slug-with-agents)
+* [remove\_skill\_noninteractive](./remove-skill-noninteractive)
+* [remove\_skill\_noninteractive\_scoped](./remove-skill-noninteractive-scoped)
+* [run\_configured\_skills\_command](./run-configured-skills-command)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+
+
+# remove_skill_noninteractive_scoped
+
+
+
+Signature [#signature]
+
+```rust
+pub fn remove_skill_noninteractive_scoped(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [install\_global\_skills\_cli](./install-global-skills-cli)
+* [install\_skill\_from\_slug](./install-skill-from-slug)
+* [install\_skill\_from\_slug\_global](./install-skill-from-slug-global)
+* [install\_skill\_from\_slug\_with\_agents](./install-skill-from-slug-with-agents)
+* [patch\_project\_lock\_after\_remove](./patch-project-lock-after-remove)
+* [remove\_skill\_noninteractive](./remove-skill-noninteractive)
+* [run\_configured\_skills\_command](./run-configured-skills-command)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+
+
+# remove_skill_noninteractive
+
+
+
+Signature [#signature]
+
+```rust
+pub fn remove_skill_noninteractive(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [install\_global\_skills\_cli](./install-global-skills-cli)
+* [install\_skill\_from\_slug](./install-skill-from-slug)
+* [install\_skill\_from\_slug\_global](./install-skill-from-slug-global)
+* [install\_skill\_from\_slug\_with\_agents](./install-skill-from-slug-with-agents)
+* [patch\_project\_lock\_after\_remove](./patch-project-lock-after-remove)
+* [remove\_skill\_noninteractive\_scoped](./remove-skill-noninteractive-scoped)
+* [run\_configured\_skills\_command](./run-configured-skills-command)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+
+
+# run_configured_skills_command
+
+
+
+Signature [#signature]
+
+```rust
+pub fn run_configured_skills_command(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [install\_global\_skills\_cli](./install-global-skills-cli)
+* [install\_skill\_from\_slug](./install-skill-from-slug)
+* [install\_skill\_from\_slug\_global](./install-skill-from-slug-global)
+* [install\_skill\_from\_slug\_with\_agents](./install-skill-from-slug-with-agents)
+* [patch\_project\_lock\_after\_remove](./patch-project-lock-after-remove)
+* [remove\_skill\_noninteractive](./remove-skill-noninteractive)
+* [remove\_skill\_noninteractive\_scoped](./remove-skill-noninteractive-scoped)
+* [verify\_global\_skills\_command](./verify-global-skills-command)
+
+
+# verify_global_skills_command
+
+
+
+Signature [#signature]
+
+```rust
+pub fn verify_global_skills_command(cfg: &SkillsCommandConfig) -> Option<String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [install\_global\_skills\_cli](./install-global-skills-cli)
+* [install\_skill\_from\_slug](./install-skill-from-slug)
+* [install\_skill\_from\_slug\_global](./install-skill-from-slug-global)
+* [install\_skill\_from\_slug\_with\_agents](./install-skill-from-slug-with-agents)
+* [patch\_project\_lock\_after\_remove](./patch-project-lock-after-remove)
+* [remove\_skill\_noninteractive](./remove-skill-noninteractive)
+* [remove\_skill\_noninteractive\_scoped](./remove-skill-noninteractive-scoped)
+* [run\_configured\_skills\_command](./run-configured-skills-command)
+
+
+# config_command_label
+
+
+
+Signature [#signature]
+
+```rust
+pub fn config_command_label(app_config: &AppConfig) -> &'static str
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config\_field\_count](./config-field-count)
+* [config\_field\_label](./config-field-label)
+* [config\_field\_value](./config-field-value)
+* [handle\_config\_key](./handle-config-key)
+* [render\_config\_value\_with\_cursor](./render-config-value-with-cursor)
+
+
+# config_field_count
+
+
+
+Signature [#signature]
+
+```rust
+pub fn config_field_count() -> usize
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config\_command\_label](./config-command-label)
+* [config\_field\_label](./config-field-label)
+* [config\_field\_value](./config-field-value)
+* [handle\_config\_key](./handle-config-key)
+* [render\_config\_value\_with\_cursor](./render-config-value-with-cursor)
+
+
+# config_field_label
+
+
+
+Signature [#signature]
+
+```rust
+pub fn config_field_label(index: usize) -> &'static str
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config\_command\_label](./config-command-label)
+* [config\_field\_count](./config-field-count)
+* [config\_field\_value](./config-field-value)
+* [handle\_config\_key](./handle-config-key)
+* [render\_config\_value\_with\_cursor](./render-config-value-with-cursor)
+
+
+# config_field_value
+
+
+
+Signature [#signature]
+
+```rust
+pub fn config_field_value(app_config: &AppConfig, index: usize) -> String
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config\_command\_label](./config-command-label)
+* [config\_field\_count](./config-field-count)
+* [config\_field\_label](./config-field-label)
+* [handle\_config\_key](./handle-config-key)
+* [render\_config\_value\_with\_cursor](./render-config-value-with-cursor)
+
+
+# handle_config_key
+
+
+
+Signature [#signature]
+
+```rust
+pub fn handle_config_key(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config\_command\_label](./config-command-label)
+* [config\_field\_count](./config-field-count)
+* [config\_field\_label](./config-field-label)
+* [config\_field\_value](./config-field-value)
+* [render\_config\_value\_with\_cursor](./render-config-value-with-cursor)
+
+
+# render_config_value_with_cursor
+
+
+
+Signature [#signature]
+
+```rust
+pub fn render_config_value_with_cursor(state: &ConfigState, value: &str) -> String
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [config\_command\_label](./config-command-label)
+* [config\_field\_count](./config-field-count)
+* [config\_field\_label](./config-field-label)
+* [config\_field\_value](./config-field-value)
+* [handle\_config\_key](./handle-config-key)
+
+
+# ConfigState
+
+
+
+Signature [#signature]
+
+```rust
+pub struct ConfigState
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [new](./new)
+
+
+# new
+
+
+
+Signature [#signature]
+
+```rust
+pub fn new() -> Self
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [ConfigState](./configstate)
+
+
+# DeleteConfirmDialogState
+
+
+
+Signature [#signature]
+
+```rust
+pub struct DeleteConfirmDialogState
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* No related public items in this module.
+
+
+# DeleteConfirmIntent
+
+
+
+Signature [#signature]
+
+```rust
+pub enum DeleteConfirmIntent
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [handle\_delete\_confirm\_key](./handle-delete-confirm-key)
+* [open\_delete\_confirm\_dialog](./open-delete-confirm-dialog)
+
+
+# handle_delete_confirm_key
+
+
+
+Signature [#signature]
+
+```rust
+pub fn handle_delete_confirm_key(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [DeleteConfirmIntent](./deleteconfirmintent)
+* [open\_delete\_confirm\_dialog](./open-delete-confirm-dialog)
+
+
+# open_delete_confirm_dialog
+
+
+
+Signature [#signature]
+
+```rust
+pub fn open_delete_confirm_dialog(skill_name: String) -> DeleteConfirmDialogState
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [DeleteConfirmIntent](./deleteconfirmintent)
+* [handle\_delete\_confirm\_key](./handle-delete-confirm-key)
+
+
+# fetch_project_global_detail_now
+
+
+
+Signature [#signature]
+
+```rust
+pub fn fetch_project_global_detail_now(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_project\_global\_detail\_if\_ready](./flush-pending-project-global-detail-if-ready)
+* [queue\_project\_global\_detail\_refresh](./queue-project-global-detail-refresh)
+* [selected\_project\_global\_slug](./selected-project-global-slug)
+* [toggle\_project\_global\_detail\_pane](./toggle-project-global-detail-pane)
+
+
+# flush_pending_project_global_detail_if_ready
+
+
+
+Signature [#signature]
+
+```rust
+pub fn flush_pending_project_global_detail_if_ready(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [fetch\_project\_global\_detail\_now](./fetch-project-global-detail-now)
+* [queue\_project\_global\_detail\_refresh](./queue-project-global-detail-refresh)
+* [selected\_project\_global\_slug](./selected-project-global-slug)
+* [toggle\_project\_global\_detail\_pane](./toggle-project-global-detail-pane)
+
+
+# queue_project_global_detail_refresh
+
+
+
+Signature [#signature]
+
+```rust
+pub fn queue_project_global_detail_refresh(state: &mut DetailState, slug: Option<String>)
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [fetch\_project\_global\_detail\_now](./fetch-project-global-detail-now)
+* [flush\_pending\_project\_global\_detail\_if\_ready](./flush-pending-project-global-detail-if-ready)
+* [selected\_project\_global\_slug](./selected-project-global-slug)
+* [toggle\_project\_global\_detail\_pane](./toggle-project-global-detail-pane)
+
+
+# selected_project_global_slug
+
+
+
+Signature [#signature]
+
+```rust
+pub fn selected_project_global_slug(favorite: &FavoriteSkill) -> Option<String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [fetch\_project\_global\_detail\_now](./fetch-project-global-detail-now)
+* [flush\_pending\_project\_global\_detail\_if\_ready](./flush-pending-project-global-detail-if-ready)
+* [queue\_project\_global\_detail\_refresh](./queue-project-global-detail-refresh)
+* [toggle\_project\_global\_detail\_pane](./toggle-project-global-detail-pane)
+
+
+# toggle_project_global_detail_pane
+
+
+
+Signature [#signature]
+
+```rust
+pub fn toggle_project_global_detail_pane(state: &mut DetailState) -> bool
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [fetch\_project\_global\_detail\_now](./fetch-project-global-detail-now)
+* [flush\_pending\_project\_global\_detail\_if\_ready](./flush-pending-project-global-detail-if-ready)
+* [queue\_project\_global\_detail\_refresh](./queue-project-global-detail-refresh)
+* [selected\_project\_global\_slug](./selected-project-global-slug)
+
+
+# render_skill_detail_pane
+
+
+
+Signature [#signature]
+
+```rust
+pub fn render_skill_detail_pane(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SkillDetailPaneData](./skilldetailpanedata)
+
+
+# SkillDetailPaneData
+
+
+
+Signature [#signature]
+
+```rust
+pub struct SkillDetailPaneData<'a>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [render\_skill\_detail\_pane](./render-skill-detail-pane)
+
+
+# DetailState
+
+
+
+Signature [#signature]
+
+```rust
+pub struct DetailState
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [new](./new)
+
+
+# new
+
+
+
+Signature [#signature]
+
+```rust
+pub fn new() -> Self
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [DetailState](./detailstate)
+
+
+# contains_display_slug
+
+
+
+Signature [#signature]
+
+```rust
+pub fn contains_display_slug(entries: &[FavoriteSkill], display_slug: &str) -> bool
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [display\_slug\_for\_node](./display-slug-for-node)
+* [favorite\_for\_node](./favorite-for-node)
+* [favorite\_matches\_search\_slug](./favorite-matches-search-slug)
+* [install\_skill\_for\_node](./install-skill-for-node)
+* [rebuild\_nodes](./rebuild-nodes)
+* [toggle](./toggle)
+
+
+# display_slug_for_node
+
+
+
+Signature [#signature]
+
+```rust
+pub fn display_slug_for_node(node: &SkillTreeNode) -> Option<String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [contains\_display\_slug](./contains-display-slug)
+* [favorite\_for\_node](./favorite-for-node)
+* [favorite\_matches\_search\_slug](./favorite-matches-search-slug)
+* [install\_skill\_for\_node](./install-skill-for-node)
+* [rebuild\_nodes](./rebuild-nodes)
+* [toggle](./toggle)
+
+
+# favorite_for_node
+
+
+
+Signature [#signature]
+
+```rust
+pub fn favorite_for_node(node: &SkillTreeNode) -> Option<FavoriteSkill>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [contains\_display\_slug](./contains-display-slug)
+* [display\_slug\_for\_node](./display-slug-for-node)
+* [favorite\_matches\_search\_slug](./favorite-matches-search-slug)
+* [install\_skill\_for\_node](./install-skill-for-node)
+* [rebuild\_nodes](./rebuild-nodes)
+* [toggle](./toggle)
+
+
+# favorite_matches_search_slug
+
+
+
+Signature [#signature]
+
+```rust
+pub fn favorite_matches_search_slug(favorite: &FavoriteSkill, slug: &str) -> bool
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [contains\_display\_slug](./contains-display-slug)
+* [display\_slug\_for\_node](./display-slug-for-node)
+* [favorite\_for\_node](./favorite-for-node)
+* [install\_skill\_for\_node](./install-skill-for-node)
+* [rebuild\_nodes](./rebuild-nodes)
+* [toggle](./toggle)
+
+
+# install_skill_for_node
+
+
+
+Signature [#signature]
+
+```rust
+pub fn install_skill_for_node(node: &SkillTreeNode) -> Option<String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [contains\_display\_slug](./contains-display-slug)
+* [display\_slug\_for\_node](./display-slug-for-node)
+* [favorite\_for\_node](./favorite-for-node)
+* [favorite\_matches\_search\_slug](./favorite-matches-search-slug)
+* [rebuild\_nodes](./rebuild-nodes)
+* [toggle](./toggle)
+
+
+# rebuild_nodes
+
+
+
+Signature [#signature]
+
+```rust
+pub fn rebuild_nodes(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [contains\_display\_slug](./contains-display-slug)
+* [display\_slug\_for\_node](./display-slug-for-node)
+* [favorite\_for\_node](./favorite-for-node)
+* [favorite\_matches\_search\_slug](./favorite-matches-search-slug)
+* [install\_skill\_for\_node](./install-skill-for-node)
+* [toggle](./toggle)
+
+
+# toggle
+
+
+
+Signature [#signature]
+
+```rust
+pub fn toggle(entries: &mut Vec<FavoriteSkill>, favorite: FavoriteSkill) -> bool
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [contains\_display\_slug](./contains-display-slug)
+* [display\_slug\_for\_node](./display-slug-for-node)
+* [favorite\_for\_node](./favorite-for-node)
+* [favorite\_matches\_search\_slug](./favorite-matches-search-slug)
+* [install\_skill\_for\_node](./install-skill-for-node)
+* [rebuild\_nodes](./rebuild-nodes)
+
+
+# FavoritesState
+
+
+
+Signature [#signature]
+
+```rust
+pub struct FavoritesState
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [new](./new)
+
+
+# new
+
+
+
+Signature [#signature]
+
+```rust
+pub fn new(entries: Vec<FavoriteSkill>) -> Self
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [FavoritesState](./favoritesstate)
+
+
+# PreviewState
+
+
+
+Signature [#signature]
+
+```rust
+pub struct PreviewState
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* No related public items in this module.
+
+
+# build_widget
+
+
+
+Signature [#signature]
+
+```rust
+pub fn build_widget(source: SourceState, show_toc: bool) -> MarkdownWidget<'static>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [clear\_pending](./clear-pending)
+* [flush\_pending\_preview\_if\_ready](./flush-pending-preview-if-ready)
+* [new\_preview\_state](./new-preview-state)
+* [open\_selected\_file\_immediate](./open-selected-file-immediate)
+* [queue\_open\_selected\_file](./queue-open-selected-file)
+
+
+# clear_pending
+
+
+
+Signature [#signature]
+
+```rust
+pub fn clear_pending(preview: &mut PreviewState)
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [build\_widget](./build-widget)
+* [flush\_pending\_preview\_if\_ready](./flush-pending-preview-if-ready)
+* [new\_preview\_state](./new-preview-state)
+* [open\_selected\_file\_immediate](./open-selected-file-immediate)
+* [queue\_open\_selected\_file](./queue-open-selected-file)
+
+
+# flush_pending_preview_if_ready
+
+
+
+Signature [#signature]
+
+```rust
+pub fn flush_pending_preview_if_ready(preview: &mut PreviewState) -> bool
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [build\_widget](./build-widget)
+* [clear\_pending](./clear-pending)
+* [new\_preview\_state](./new-preview-state)
+* [open\_selected\_file\_immediate](./open-selected-file-immediate)
+* [queue\_open\_selected\_file](./queue-open-selected-file)
+
+
+# new_preview_state
+
+
+
+Signature [#signature]
+
+```rust
+pub fn new_preview_state(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [build\_widget](./build-widget)
+* [clear\_pending](./clear-pending)
+* [flush\_pending\_preview\_if\_ready](./flush-pending-preview-if-ready)
+* [open\_selected\_file\_immediate](./open-selected-file-immediate)
+* [queue\_open\_selected\_file](./queue-open-selected-file)
+
+
+# open_selected_file_immediate
+
+
+
+Signature [#signature]
+
+```rust
+pub fn open_selected_file_immediate(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [build\_widget](./build-widget)
+* [clear\_pending](./clear-pending)
+* [flush\_pending\_preview\_if\_ready](./flush-pending-preview-if-ready)
+* [new\_preview\_state](./new-preview-state)
+* [queue\_open\_selected\_file](./queue-open-selected-file)
+
+
+# queue_open_selected_file
+
+
+
+Signature [#signature]
+
+```rust
+pub fn queue_open_selected_file(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [build\_widget](./build-widget)
+* [clear\_pending](./clear-pending)
+* [flush\_pending\_preview\_if\_ready](./flush-pending-preview-if-ready)
+* [new\_preview\_state](./new-preview-state)
+* [open\_selected\_file\_immediate](./open-selected-file-immediate)
+
+
+# apply_startup_choice
+
+
+
+Signature [#signature]
+
+```rust
+pub fn apply_startup_choice(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [handle\_startup\_dialog\_key](./handle-startup-dialog-key)
+* [startup\_choice\_message](./startup-choice-message)
+
+
+# handle_startup_dialog_key
+
+
+
+Signature [#signature]
+
+```rust
+pub fn handle_startup_dialog_key(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [apply\_startup\_choice](./apply-startup-choice)
+* [startup\_choice\_message](./startup-choice-message)
+
+
+# startup_choice_message
+
+
+
+Signature [#signature]
+
+```rust
+pub fn startup_choice_message() -> &'static str
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [apply\_startup\_choice](./apply-startup-choice)
+* [handle\_startup\_dialog\_key](./handle-startup-dialog-key)
+
+
+# StartupDialogState
+
+
+
+Signature [#signature]
+
+```rust
+pub enum StartupDialogState
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* No related public items in this module.
+
+
+# render_search_view
+
+
+
+Signature [#signature]
+
+```rust
+pub fn render_search_view(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* No related public items in this module.
+
+
+# new
+
+
+
+Signature [#signature]
+
+```rust
+pub fn new() -> Self
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [SearchState](./searchstate)
+
+
+# SearchState
+
+
+
+Signature [#signature]
+
+```rust
+pub struct SearchState
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [new](./new)
+
+
+# flush_pending_search_detail_if_ready
+
+
+
+Signature [#signature]
+
+```rust
+pub fn flush_pending_search_detail_if_ready(state: &mut SearchState) -> bool
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_search\_refresh\_if\_ready](./flush-pending-search-refresh-if-ready)
+* [install\_selected\_search\_skill\_slug](./install-selected-search-skill-slug)
+* [queue\_search\_refresh](./queue-search-refresh)
+* [queue\_selected\_search\_detail](./queue-selected-search-detail)
+* [refresh\_search\_results](./refresh-search-results)
+* [selected\_search\_item](./selected-search-item)
+* [skill\_slug](./skill-slug)
+* [split\_slug](./split-slug)
+
+
+# flush_pending_search_refresh_if_ready
+
+
+
+Signature [#signature]
+
+```rust
+pub fn flush_pending_search_refresh_if_ready(state: &mut SearchState) -> bool
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_search\_detail\_if\_ready](./flush-pending-search-detail-if-ready)
+* [install\_selected\_search\_skill\_slug](./install-selected-search-skill-slug)
+* [queue\_search\_refresh](./queue-search-refresh)
+* [queue\_selected\_search\_detail](./queue-selected-search-detail)
+* [refresh\_search\_results](./refresh-search-results)
+* [selected\_search\_item](./selected-search-item)
+* [skill\_slug](./skill-slug)
+* [split\_slug](./split-slug)
+
+
+# install_selected_search_skill_slug
+
+
+
+Signature [#signature]
+
+```rust
+pub fn install_selected_search_skill_slug(state: &SearchState) -> Result<String, String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_search\_detail\_if\_ready](./flush-pending-search-detail-if-ready)
+* [flush\_pending\_search\_refresh\_if\_ready](./flush-pending-search-refresh-if-ready)
+* [queue\_search\_refresh](./queue-search-refresh)
+* [queue\_selected\_search\_detail](./queue-selected-search-detail)
+* [refresh\_search\_results](./refresh-search-results)
+* [selected\_search\_item](./selected-search-item)
+* [skill\_slug](./skill-slug)
+* [split\_slug](./split-slug)
+
+
+# queue_search_refresh
+
+
+
+Signature [#signature]
+
+```rust
+pub fn queue_search_refresh(state: &mut SearchState)
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_search\_detail\_if\_ready](./flush-pending-search-detail-if-ready)
+* [flush\_pending\_search\_refresh\_if\_ready](./flush-pending-search-refresh-if-ready)
+* [install\_selected\_search\_skill\_slug](./install-selected-search-skill-slug)
+* [queue\_selected\_search\_detail](./queue-selected-search-detail)
+* [refresh\_search\_results](./refresh-search-results)
+* [selected\_search\_item](./selected-search-item)
+* [skill\_slug](./skill-slug)
+* [split\_slug](./split-slug)
+
+
+# queue_selected_search_detail
+
+
+
+Signature [#signature]
+
+```rust
+pub fn queue_selected_search_detail(state: &mut SearchState)
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_search\_detail\_if\_ready](./flush-pending-search-detail-if-ready)
+* [flush\_pending\_search\_refresh\_if\_ready](./flush-pending-search-refresh-if-ready)
+* [install\_selected\_search\_skill\_slug](./install-selected-search-skill-slug)
+* [queue\_search\_refresh](./queue-search-refresh)
+* [refresh\_search\_results](./refresh-search-results)
+* [selected\_search\_item](./selected-search-item)
+* [skill\_slug](./skill-slug)
+* [split\_slug](./split-slug)
+
+
+# refresh_search_results
+
+
+
+Signature [#signature]
+
+```rust
+pub fn refresh_search_results(state: &mut SearchState)
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_search\_detail\_if\_ready](./flush-pending-search-detail-if-ready)
+* [flush\_pending\_search\_refresh\_if\_ready](./flush-pending-search-refresh-if-ready)
+* [install\_selected\_search\_skill\_slug](./install-selected-search-skill-slug)
+* [queue\_search\_refresh](./queue-search-refresh)
+* [queue\_selected\_search\_detail](./queue-selected-search-detail)
+* [selected\_search\_item](./selected-search-item)
+* [skill\_slug](./skill-slug)
+* [split\_slug](./split-slug)
+
+
+# selected_search_item
+
+
+
+Signature [#signature]
+
+```rust
+pub fn selected_search_item(state: &SearchState) -> Option<&SkillListItem>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_search\_detail\_if\_ready](./flush-pending-search-detail-if-ready)
+* [flush\_pending\_search\_refresh\_if\_ready](./flush-pending-search-refresh-if-ready)
+* [install\_selected\_search\_skill\_slug](./install-selected-search-skill-slug)
+* [queue\_search\_refresh](./queue-search-refresh)
+* [queue\_selected\_search\_detail](./queue-selected-search-detail)
+* [refresh\_search\_results](./refresh-search-results)
+* [skill\_slug](./skill-slug)
+* [split\_slug](./split-slug)
+
+
+# skill_slug
+
+
+
+Signature [#signature]
+
+```rust
+pub fn skill_slug(item: &SkillListItem) -> Option<String>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_search\_detail\_if\_ready](./flush-pending-search-detail-if-ready)
+* [flush\_pending\_search\_refresh\_if\_ready](./flush-pending-search-refresh-if-ready)
+* [install\_selected\_search\_skill\_slug](./install-selected-search-skill-slug)
+* [queue\_search\_refresh](./queue-search-refresh)
+* [queue\_selected\_search\_detail](./queue-selected-search-detail)
+* [refresh\_search\_results](./refresh-search-results)
+* [selected\_search\_item](./selected-search-item)
+* [split\_slug](./split-slug)
+
+
+# split_slug
+
+
+
+Signature [#signature]
+
+```rust
+pub fn split_slug(slug: &str) -> Option<(&str, &str, &str)>
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [flush\_pending\_search\_detail\_if\_ready](./flush-pending-search-detail-if-ready)
+* [flush\_pending\_search\_refresh\_if\_ready](./flush-pending-search-refresh-if-ready)
+* [install\_selected\_search\_skill\_slug](./install-selected-search-skill-slug)
+* [queue\_search\_refresh](./queue-search-refresh)
+* [queue\_selected\_search\_detail](./queue-selected-search-detail)
+* [refresh\_search\_results](./refresh-search-results)
+* [selected\_search\_item](./selected-search-item)
+* [skill\_slug](./skill-slug)
+
+
+# collapse_selected_skill
+
+
+
+Signature [#signature]
+
+```rust
+pub fn collapse_selected_skill(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [collect\_visible\_skill\_paths](./collect-visible-skill-paths)
+* [ensure\_skill\_selection\_visible](./ensure-skill-selection-visible)
+* [expand\_selected\_skill](./expand-selected-skill)
+* [select\_next\_skill](./select-next-skill)
+* [select\_prev\_skill](./select-prev-skill)
+* [select\_skill\_by\_visible\_row](./select-skill-by-visible-row)
+* [visible\_skill\_paths](./visible-skill-paths)
+
+
+# collect_visible_skill_paths
+
+
+
+Signature [#signature]
+
+```rust
+pub fn collect_visible_skill_paths(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [collapse\_selected\_skill](./collapse-selected-skill)
+* [ensure\_skill\_selection\_visible](./ensure-skill-selection-visible)
+* [expand\_selected\_skill](./expand-selected-skill)
+* [select\_next\_skill](./select-next-skill)
+* [select\_prev\_skill](./select-prev-skill)
+* [select\_skill\_by\_visible\_row](./select-skill-by-visible-row)
+* [visible\_skill\_paths](./visible-skill-paths)
+
+
+# ensure_skill_selection_visible
+
+
+
+Signature [#signature]
+
+```rust
+pub fn ensure_skill_selection_visible(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [collapse\_selected\_skill](./collapse-selected-skill)
+* [collect\_visible\_skill\_paths](./collect-visible-skill-paths)
+* [expand\_selected\_skill](./expand-selected-skill)
+* [select\_next\_skill](./select-next-skill)
+* [select\_prev\_skill](./select-prev-skill)
+* [select\_skill\_by\_visible\_row](./select-skill-by-visible-row)
+* [visible\_skill\_paths](./visible-skill-paths)
+
+
+# expand_selected_skill
+
+
+
+Signature [#signature]
+
+```rust
+pub fn expand_selected_skill(selected_path: &Option<SkillPath>, expanded: &mut ExpandedSkillPaths)
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [collapse\_selected\_skill](./collapse-selected-skill)
+* [collect\_visible\_skill\_paths](./collect-visible-skill-paths)
+* [ensure\_skill\_selection\_visible](./ensure-skill-selection-visible)
+* [select\_next\_skill](./select-next-skill)
+* [select\_prev\_skill](./select-prev-skill)
+* [select\_skill\_by\_visible\_row](./select-skill-by-visible-row)
+* [visible\_skill\_paths](./visible-skill-paths)
+
+
+# select_next_skill
+
+
+
+Signature [#signature]
+
+```rust
+pub fn select_next_skill(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [collapse\_selected\_skill](./collapse-selected-skill)
+* [collect\_visible\_skill\_paths](./collect-visible-skill-paths)
+* [ensure\_skill\_selection\_visible](./ensure-skill-selection-visible)
+* [expand\_selected\_skill](./expand-selected-skill)
+* [select\_prev\_skill](./select-prev-skill)
+* [select\_skill\_by\_visible\_row](./select-skill-by-visible-row)
+* [visible\_skill\_paths](./visible-skill-paths)
+
+
+# select_prev_skill
+
+
+
+Signature [#signature]
+
+```rust
+pub fn select_prev_skill(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [collapse\_selected\_skill](./collapse-selected-skill)
+* [collect\_visible\_skill\_paths](./collect-visible-skill-paths)
+* [ensure\_skill\_selection\_visible](./ensure-skill-selection-visible)
+* [expand\_selected\_skill](./expand-selected-skill)
+* [select\_next\_skill](./select-next-skill)
+* [select\_skill\_by\_visible\_row](./select-skill-by-visible-row)
+* [visible\_skill\_paths](./visible-skill-paths)
+
+
+# select_skill_by_visible_row
+
+
+
+Signature [#signature]
+
+```rust
+pub fn select_skill_by_visible_row(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [collapse\_selected\_skill](./collapse-selected-skill)
+* [collect\_visible\_skill\_paths](./collect-visible-skill-paths)
+* [ensure\_skill\_selection\_visible](./ensure-skill-selection-visible)
+* [expand\_selected\_skill](./expand-selected-skill)
+* [select\_next\_skill](./select-next-skill)
+* [select\_prev\_skill](./select-prev-skill)
+* [visible\_skill\_paths](./visible-skill-paths)
+
+
+# visible_skill_paths
+
+
+
+Signature [#signature]
+
+```rust
+pub fn visible_skill_paths(
+```
+
+Documentation [#documentation]
+
+No rustdoc comments were found for this public symbol.
+
+Related Items [#related-items]
+
+* [collapse\_selected\_skill](./collapse-selected-skill)
+* [collect\_visible\_skill\_paths](./collect-visible-skill-paths)
+* [ensure\_skill\_selection\_visible](./ensure-skill-selection-visible)
+* [expand\_selected\_skill](./expand-selected-skill)
+* [select\_next\_skill](./select-next-skill)
+* [select\_prev\_skill](./select-prev-skill)
+* [select\_skill\_by\_visible\_row](./select-skill-by-visible-row)

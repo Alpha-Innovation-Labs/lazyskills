@@ -1,8 +1,0 @@
-{
-  "title": "Logic",
-  "pages": [
-    "deleteconfirmintent",
-    "handle-delete-confirm-key",
-    "open-delete-confirm-dialog"
-  ]
-}

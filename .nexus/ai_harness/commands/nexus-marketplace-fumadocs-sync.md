@@ -1,1 +1,0 @@
-../../marketplace/fumadocs/commands/nexus-fumadocs-sync.md

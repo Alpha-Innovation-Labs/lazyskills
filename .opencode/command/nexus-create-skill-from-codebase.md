@@ -1,1 +1,0 @@
-../../.nexus/ai_harness/commands/nexus-create-skill-from-codebase.md

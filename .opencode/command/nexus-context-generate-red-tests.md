@@ -1,1 +1,0 @@
-../../.nexus/ai_harness/commands/nexus-context-generate-red-tests.md

@@ -1,1 +1,0 @@
-mod ssi_001_capture_skills_sh_data_contract;
