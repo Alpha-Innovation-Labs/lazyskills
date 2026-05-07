@@ -263,16 +263,13 @@ pub fn load_project_skill_hierarchy() -> io::Result<Vec<SkillTreeNode>> {
 }
 
 pub fn global_agents_skill_root() -> PathBuf {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("~"));
-    home.join(".agents/skills")
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("~"))
+        .join(".agents/skills")
 }
 
 pub fn provider_global_skill_roots() -> Vec<(String, PathBuf)> {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("~"));
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("~"));
 
     vec![
         ("claude-code".to_string(), home.join(".claude/skills")),
