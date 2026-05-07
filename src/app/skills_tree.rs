@@ -7,7 +7,6 @@ use ratkit::widgets::markdown_preview::SourceState;
 use serde::Deserialize;
 
 pub const ROOT_AGENTS_PATH: &str = ".agents";
-pub const DEFAULT_SKILL_PATH: &str = ".agents/skills/ratkit/SKILL.md";
 
 #[derive(Clone, Debug)]
 pub struct SkillTreeNode {
