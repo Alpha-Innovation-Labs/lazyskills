@@ -251,14 +251,36 @@ pub fn load_project_skill_hierarchy() -> io::Result<Vec<SkillTreeNode>> {
     let root = PathBuf::from(ROOT_AGENTS_PATH);
     let skills_root = root.join("skills");
     let start = if skills_root.exists() {
-        skills_root
+        Some(skills_root)
+    } else if root.exists() {
+        Some(root)
     } else {
-        root
+        None
     };
 
     let mut nodes = Vec::new();
-    add_skill_nodes_from_root(&mut nodes, &start, None)?;
+    if let Some(start) = start {
+        add_skill_nodes_from_root(&mut nodes, &start, None)?;
+        if !nodes.is_empty() {
+            return Ok(nodes);
+        }
+    }
+
+    for (provider, project_root) in provider_project_skill_roots() {
+        add_skill_nodes_from_root(&mut nodes, &project_root, Some(&provider))?;
+    }
     Ok(nodes)
+}
+
+pub fn provider_project_skill_roots() -> Vec<(String, PathBuf)> {
+    vec![
+        ("claude-code".to_string(), PathBuf::from(".claude/skills")),
+        ("opencode".to_string(), PathBuf::from(".opencode/skills")),
+        ("cursor".to_string(), PathBuf::from(".cursor/skills")),
+        ("gemini-cli".to_string(), PathBuf::from(".gemini/skills")),
+        ("windsurf".to_string(), PathBuf::from(".windsurf/skills")),
+        ("goose".to_string(), PathBuf::from(".goose/skills")),
+    ]
 }
 
 pub fn global_agents_skill_root() -> PathBuf {
