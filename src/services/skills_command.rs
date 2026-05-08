@@ -4,16 +4,28 @@ use std::process::Command;
 
 use crate::config::{FavoriteSkill, SkillsCommandConfig, SkillsCommandMode};
 
+#[cfg(windows)]
+fn command_for_program(program: &str) -> Command {
+    let mut cmd = Command::new("cmd");
+    cmd.arg("/C").arg(program);
+    cmd
+}
+
+#[cfg(not(windows))]
+fn command_for_program(program: &str) -> Command {
+    Command::new(program)
+}
+
 pub fn run_configured_skills_command(
     config: &SkillsCommandConfig,
     args: &[&str],
 ) -> Result<String, String> {
     let mut command = if matches!(config.mode, SkillsCommandMode::Npx) {
-        let mut cmd = Command::new(&config.npx_command);
+        let mut cmd = command_for_program(&config.npx_command);
         cmd.arg(&config.npx_package);
         cmd
     } else {
-        Command::new(&config.global_command)
+        command_for_program(&config.global_command)
     };
 
     let output = command
@@ -193,7 +205,7 @@ pub fn verify_global_skills_command(cfg: &SkillsCommandConfig) -> Option<String>
 }
 
 pub fn install_global_skills_cli() -> Result<(), String> {
-    let output = Command::new("npm")
+    let output = command_for_program("npm")
         .args(["install", "-g", "skills"])
         .output()
         .map_err(|err| format!("Failed to run npm: {}", err))?;
@@ -228,7 +240,7 @@ pub fn install_global_skills_cli() -> Result<(), String> {
 }
 
 fn run_command_for_output(bin: &str, args: &[&str]) -> Option<String> {
-    let output = Command::new(bin).args(args).output().ok()?;
+    let output = command_for_program(bin).args(args).output().ok()?;
     if !output.status.success() {
         return None;
     }

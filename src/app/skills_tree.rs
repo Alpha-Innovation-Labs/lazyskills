@@ -7,7 +7,6 @@ use ratkit::widgets::markdown_preview::SourceState;
 use serde::Deserialize;
 
 pub const ROOT_AGENTS_PATH: &str = ".agents";
-pub const DEFAULT_SKILL_PATH: &str = ".agents/skills/ratkit/SKILL.md";
 
 #[derive(Clone, Debug)]
 pub struct SkillTreeNode {
@@ -252,27 +251,46 @@ pub fn load_project_skill_hierarchy() -> io::Result<Vec<SkillTreeNode>> {
     let root = PathBuf::from(ROOT_AGENTS_PATH);
     let skills_root = root.join("skills");
     let start = if skills_root.exists() {
-        skills_root
+        Some(skills_root)
+    } else if root.exists() {
+        Some(root)
     } else {
-        root
+        None
     };
 
     let mut nodes = Vec::new();
-    add_skill_nodes_from_root(&mut nodes, &start, None)?;
+    if let Some(start) = start {
+        add_skill_nodes_from_root(&mut nodes, &start, None)?;
+        if !nodes.is_empty() {
+            return Ok(nodes);
+        }
+    }
+
+    for (provider, project_root) in provider_project_skill_roots() {
+        add_skill_nodes_from_root(&mut nodes, &project_root, Some(&provider))?;
+    }
     Ok(nodes)
 }
 
+pub fn provider_project_skill_roots() -> Vec<(String, PathBuf)> {
+    vec![
+        ("claude-code".to_string(), PathBuf::from(".claude/skills")),
+        ("opencode".to_string(), PathBuf::from(".opencode/skills")),
+        ("cursor".to_string(), PathBuf::from(".cursor/skills")),
+        ("gemini-cli".to_string(), PathBuf::from(".gemini/skills")),
+        ("windsurf".to_string(), PathBuf::from(".windsurf/skills")),
+        ("goose".to_string(), PathBuf::from(".goose/skills")),
+    ]
+}
+
 pub fn global_agents_skill_root() -> PathBuf {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("~"));
-    home.join(".agents/skills")
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("~"))
+        .join(".agents/skills")
 }
 
 pub fn provider_global_skill_roots() -> Vec<(String, PathBuf)> {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("~"));
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("~"));
 
     vec![
         ("claude-code".to_string(), home.join(".claude/skills")),

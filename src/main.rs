@@ -32,7 +32,7 @@ use ratkit::widgets::{HotkeyFooter, HotkeyItem};
 use crate::app::skills_tree::{
     collect_expanded_skill_paths, first_skill_file, load_global_skill_hierarchy,
     load_project_skill_hierarchy, load_source_from_path, preview_relative_to_skills,
-    skill_node_at_path, skill_remove_target_from_path, SkillTreeNode, DEFAULT_SKILL_PATH,
+    skill_node_at_path, skill_remove_target_from_path, SkillTreeNode,
 };
 use crate::features::detail::render::{render_skill_detail_pane, SkillDetailPaneData};
 use crate::features::{
@@ -2449,16 +2449,17 @@ fn main() -> io::Result<()> {
     let project_skills_nodes = load_project_skill_hierarchy()?;
     let global_skills_nodes = load_global_skill_hierarchy()?;
 
-    let source_path = first_skill_file(&project_skills_nodes)
-        .or_else(|| first_skill_file(&global_skills_nodes))
-        .unwrap_or_else(|| PathBuf::from(DEFAULT_SKILL_PATH));
-    if !source_path.exists() {
-        return Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            "No SKILL.md found in project (.agents) or supported global skill directories",
-        ));
-    }
-    let source = load_source_from_path(&source_path)?;
+    let resolved_source_path =
+        first_skill_file(&project_skills_nodes).or_else(|| first_skill_file(&global_skills_nodes));
+    let no_skills_found = resolved_source_path.is_none();
+
+    let (source_path, source) = match resolved_source_path {
+        Some(path) => {
+            let source = load_source_from_path(&path)?;
+            (path, source)
+        }
+        None => (PathBuf::new(), SourceState::default()),
+    };
     let mut app = SkillPreviewApp::new(
         app_config,
         startup_dialog,
@@ -2469,6 +2470,9 @@ fn main() -> io::Result<()> {
     );
     if app.project_skills_nodes.is_empty() && !app.global_skills_nodes.is_empty() {
         app.set_view(AppView::Global);
+    }
+    if no_skills_found {
+        app.show_toast("No skills found. Press / to search the marketplace.");
     }
     let config = RunnerConfig {
         tick_rate: Duration::from_millis(250),
